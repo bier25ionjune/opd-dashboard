@@ -389,8 +389,90 @@
       return `${yy}-${mm}-${dd}`;
     }
 
-    async function loadDataAvailability() {
+async function loadDataAvailability() {
       const reportBox = document.getElementById('data-availability-report-content');
+      const uploadBox = document.getElementById('data-availability-upload-content');
+
+      reportBox.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบข้อมูลในระบบ...';
+      uploadBox.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบข้อมูลในระบบ...';
+
+      // ดึงข้อมูลแบบแบ่งหน้า (Pagination) เพื่อให้ได้ครบทุกแถวไม่ติด Limit 1,000 แถว
+      let allDates = [];
+      let from = 0;
+      let step = 1000;
+      let keepFetching = true;
+
+      while (keepFetching) {
+        const { data, error } = await supabaseClient
+          .from('opd_summary')
+          .select('regist_date')
+          .range(from, from + step - 1);
+
+        if (error) {
+          const errHtml = `❌ ไม่สามารถตรวจสอบข้อมูลได้: ${error.message}`;
+          reportBox.innerHTML = errHtml;
+          uploadBox.innerHTML = errHtml;
+          return;
+        }
+
+        if (data && data.length > 0) {
+          allDates = allDates.concat(data);
+          if (data.length < step) {
+            keepFetching = false;
+          } else {
+            from += step;
+          }
+        } else {
+          keepFetching = false;
+        }
+      }
+
+      if (allDates.length === 0) {
+        const emptyHtml = '⚠️ ยังไม่มีข้อมูลในระบบ กรุณาอัปโหลดไฟล์ CSV เพื่อเริ่มต้นใช้งาน';
+        reportBox.innerHTML = emptyHtml;
+        uploadBox.innerHTML = emptyHtml;
+        return;
+      }
+
+      const uniqueDates = [...new Set(allDates.map(r => String(r.regist_date).slice(0, 10)))].sort();
+      const minDate = uniqueDates[0];
+      const maxDate = uniqueDates[uniqueDates.length - 1];
+      const dateSet = new Set(uniqueDates);
+
+      // หาช่วงวันที่ขาดหาย
+      const missingRanges = [];
+      let cursorIso = minDate;
+      let prevIso = null;
+      let rangeStart = null;
+
+      while (cursorIso <= maxDate) {
+        if (!dateSet.has(cursorIso)) {
+          if (!rangeStart) rangeStart = cursorIso;
+        } else {
+          if (rangeStart) {
+            missingRanges.push([rangeStart, prevIso]);
+            rangeStart = null;
+          }
+        }
+        prevIso = cursorIso;
+        cursorIso = addDaysToISO(cursorIso, 1);
+      }
+      if (rangeStart) missingRanges.push([rangeStart, prevIso]);
+
+      let html = `📅 มีข้อมูลตั้งแต่วันที่ <strong>${toThaiDateDisplay(minDate)}</strong> ถึง <strong>${toThaiDateDisplay(maxDate)}</strong>`;
+
+      if (missingRanges.length > 0) {
+        const rangesText = missingRanges.map(r => {
+          return r[0] === r[1] ? toThaiDateDisplay(r[0]) : `${toThaiDateDisplay(r[0])} - ${toThaiDateDisplay(r[1])}`;
+        }).join(', ');
+        html += `<br>⚠️ <span class="text-red-600 font-semibold">พบวันที่ข้อมูลขาดหายจำนวน ${missingRanges.length} ช่วง:</span> <span class="text-red-600">${rangesText}</span>`;
+      } else {
+        html += `<br>✅ <span class="text-green-600 font-medium">ข้อมูลครบถ้วน ไม่มีวันที่ขาดหายในช่วงนี้</span>`;
+      }
+
+      reportBox.innerHTML = html;
+      uploadBox.innerHTML = html;
+    }      const reportBox = document.getElementById('data-availability-report-content');
       const uploadBox = document.getElementById('data-availability-upload-content');
 
       reportBox.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบข้อมูลในระบบ...';
