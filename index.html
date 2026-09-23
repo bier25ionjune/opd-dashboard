@@ -23,7 +23,8 @@
 
     <!-- TAB 1: ดูรายงาน -->
     <div id="content-report">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded border">
+      <!-- ส่วนฟิลเตอร์ค้นหา -->
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 bg-gray-50 p-4 rounded border">
         <div>
           <label class="block text-sm font-medium text-gray-700">วันที่เริ่มต้น</label>
           <input type="date" id="start-date" class="mt-1 w-full p-2 border rounded">
@@ -31,6 +32,16 @@
         <div>
           <label class="block text-sm font-medium text-gray-700">ถึงวันที่</label>
           <input type="date" id="end-date" class="mt-1 w-full p-2 border rounded">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">เลข ว. แพทย์</label>
+          <input type="text" id="filter-doccode" placeholder="เช่น 27447 (เว้นว่างเพื่อดูทั้งหมด)" class="mt-1 w-full p-2 border rounded">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">เลือกคลินิก</label>
+          <select id="filter-clinic" class="mt-1 w-full p-2 border rounded bg-white">
+            <option value="">-- ทุกคลินิก --</option>
+          </select>
         </div>
         <div class="flex items-end">
           <button onclick="fetchReport()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">
@@ -115,23 +126,55 @@
       document.getElementById(`content-${tab}`).classList.remove('hidden');
       document.getElementById(`tab-${tab}`).classList.add('text-blue-600', 'border-blue-600');
       document.getElementById(`tab-${tab}`).classList.remove('text-gray-500');
+
+      // ถ้ากดมาที่หน้าดูรายงาน ให้โหลดรายชื่อคลินิกลง Dropdown รอไว้
+      if(tab === 'report') {
+        loadClinicDropdown();
+      }
     }
 
     // ==========================================
-    // 2. ตั้งค่า Supabase (เปลี่ยนชื่อตัวแปรไม่ให้ชนกับระบบ)
+    // 2. ตั้งค่า Supabase
     // ==========================================
     const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8';
     
-    // สร้างตัวแปรชื่อ supabaseClient แทน supabase
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // โหลดรายชื่อคลินิกทั้งหมดใส่ Dropdown อัตโนมัติ
+    async function loadClinicDropdown() {
+      const clinicSelect = document.getElementById('filter-clinic');
+      if (clinicSelect.options.length > 1) return; // โหลดแค่ครั้งเดียวพอ
+
+      const { data, error } = await supabaseClient
+        .from('opd_summary')
+        .select('clinic');
+
+      if (!error && data) {
+        // กรองชื่อคลินิกไม่ให้ซ้ำกัน
+        const clinics = [...new Set(data.map(item => item.clinic))].sort();
+        clinics.forEach(clinic => {
+          const opt = document.createElement('option');
+          opt.value = clinic;
+          opt.textContent = clinic;
+          clinicSelect.appendChild(opt);
+        });
+      }
+    }
+
+    // โหลดรายชื่อคลินิกลง Dropdown ตั้งแต่เปิดเว็บ
+    window.onload = function() {
+      loadClinicDropdown();
+    };
+
     // ==========================================
-    // 3. ฟังก์ชันดูรายงาน (Tab 1)
+    // 3. ฟังก์ชันดูรายงาน (Tab 1 - รองรับกรองเลข ว. และคลินิก)
     // ==========================================
     async function fetchReport() {
       const startDate = document.getElementById('start-date').value;
       const endDate = document.getElementById('end-date').value;
+      const filterDocCode = document.getElementById('filter-doccode').value.trim();
+      const filterClinic = document.getElementById('filter-clinic').value;
       const tbody = document.getElementById('report-table-body');
 
       if (!startDate || !endDate) {
@@ -139,14 +182,26 @@
         return;
       }
 
-      tbody.innerHTML = '<tr><td colspan="6" class="py-4">⏳ กำลังโหลดข้อมูล...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="py-4">⏳ กำลังค้นหาข้อมูล...</td></tr>';
 
-      // ใช้ supabaseClient แทน
-      const { data, error } = await supabaseClient
+      // สร้าง Query พื้นฐานตามวันที่
+      let query = supabaseClient
         .from('opd_summary')
         .select('*')
         .gte('regist_date', startDate)
         .lte('regist_date', endDate);
+
+      // ถ้ามีการกรองคลินิก
+      if (filterClinic) {
+        query = query.eq('clinic', filterClinic);
+      }
+
+      // ถ้ามีการกรองเลข ว.
+      if (filterDocCode) {
+        query = query.ilike('doc_code', `%${filterDocCode}%`);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-red-500">Error: ${error.message}</td></tr>`;
@@ -154,7 +209,7 @@
       }
 
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-gray-500">❌ ไม่พบข้อมูลในช่วงเวลาที่ระบุ</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-gray-500">❌ ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา</td></tr>';
         document.getElementById('sum-total').innerText = '0';
         document.getElementById('sum-completed').innerText = '0';
         document.getElementById('sum-percent').innerText = '0.0%';
@@ -229,7 +284,7 @@
         let d = parts[0].padStart(2, '0');
         let m = parts[1].padStart(2, '0');
         let y = parseInt(parts[2], 10);
-        if(y > 2500) y -= 543; // แปลง พ.ศ. เป็น ค.ศ.
+        if(y > 2500) y -= 543;
         return `${y}-${m}-${d}`;
       }
       return null;
@@ -286,7 +341,6 @@
 
           for (let i = 0; i < dataToInsert.length; i += batchSize) {
             const batch = dataToInsert.slice(i, i + batchSize);
-            // ใช้ supabaseClient แทน
             const { error } = await supabaseClient
               .from('opd_summary')
               .upsert(batch, { onConflict: 'regist_date, clinic, doc_code, doc_name' });
@@ -306,6 +360,7 @@
             statusDiv.innerText = `✅ อัปโหลดและอัปเดตข้อมูลสำเร็จเรียบร้อย!`;
             document.getElementById('csv-file').value = ""; 
             updateFileName();
+            loadClinicDropdown(); // อัปเดตรายชื่อคลินิกเผื่อมีคลินิกใหม่
           }
         }
       });
