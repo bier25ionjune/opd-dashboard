@@ -102,8 +102,7 @@
 
   <script>
     // ==========================================
-    // 1. ส่วนควบคุม UI (สลับหน้า)
-    // เอาไว้ด้านบนสุด เพื่อให้การสลับหน้าทำงานได้เสมอแม้ DB จะหลุด
+    // 1. ฟังก์ชันสลับหน้า Tab
     // ==========================================
     function switchTab(tab) {
       document.getElementById('content-report').classList.add('hidden');
@@ -119,29 +118,18 @@
     }
 
     // ==========================================
-    // 2. ตั้งค่า Supabase (พร้อมระบบป้องกัน Error)
+    // 2. ตั้งค่า Supabase (เปลี่ยนชื่อตัวแปรไม่ให้ชนกับระบบ)
     // ==========================================
     const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8';
     
-    let supabase;
-    try {
-      if (window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      } else {
-        console.error("ไม่สามารถเชื่อมต่อ Supabase CDN ได้ (อาจถูกบล็อกโดยอินเทอร์เน็ตโรงพยาบาล)");
-        alert("คำเตือน: โหลดระบบฐานข้อมูลไม่สำเร็จ กรุณาเช็กอินเทอร์เน็ตหรือปิดระบบป้องกันของเบราว์เซอร์");
-      }
-    } catch (e) {
-      console.error("Supabase Init Error:", e);
-    }
+    // สร้างตัวแปรชื่อ supabaseClient แทน supabase
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ==========================================
     // 3. ฟังก์ชันดูรายงาน (Tab 1)
     // ==========================================
     async function fetchReport() {
-      if (!supabase) return alert("ไม่สามารถดึงข้อมูลได้ เนื่องจากไม่สามารถเชื่อมต่อฐานข้อมูล");
-      
       const startDate = document.getElementById('start-date').value;
       const endDate = document.getElementById('end-date').value;
       const tbody = document.getElementById('report-table-body');
@@ -153,7 +141,8 @@
 
       tbody.innerHTML = '<tr><td colspan="6" class="py-4">⏳ กำลังโหลดข้อมูล...</td></tr>';
 
-      const { data, error } = await supabase
+      // ใช้ supabaseClient แทน
+      const { data, error } = await supabaseClient
         .from('opd_summary')
         .select('*')
         .gte('regist_date', startDate)
@@ -247,8 +236,6 @@
     }
 
     function processAndUploadCSV() {
-      if (!supabase) return alert("ไม่สามารถอัปโหลดข้อมูลได้ เนื่องจากไม่สามารถเชื่อมต่อฐานข้อมูล");
-
       const fileInput = document.getElementById('csv-file');
       if (fileInput.files.length === 0) return;
 
@@ -257,12 +244,6 @@
       statusDiv.classList.remove('hidden', 'text-green-600', 'text-red-600');
       statusDiv.classList.add('text-blue-600');
       statusDiv.innerText = '⏳ กำลังอ่านไฟล์ CSV...';
-
-      if (!window.Papa) {
-        statusDiv.classList.replace('text-blue-600', 'text-red-600');
-        statusDiv.innerText = '❌ ไม่สามารถโหลดตัวอ่านไฟล์ CSV ได้ (PapaParse)';
-        return;
-      }
 
       Papa.parse(file, {
         header: true,
@@ -305,7 +286,8 @@
 
           for (let i = 0; i < dataToInsert.length; i += batchSize) {
             const batch = dataToInsert.slice(i, i + batchSize);
-            const { error } = await supabase
+            // ใช้ supabaseClient แทน
+            const { error } = await supabaseClient
               .from('opd_summary')
               .upsert(batch, { onConflict: 'regist_date, clinic, doc_code, doc_name' });
             
@@ -322,7 +304,7 @@
           } else {
             statusDiv.classList.replace('text-blue-600', 'text-green-600');
             statusDiv.innerText = `✅ อัปโหลดและอัปเดตข้อมูลสำเร็จเรียบร้อย!`;
-            document.getElementById('csv-file').value = ""; // เคลียร์ไฟล์
+            document.getElementById('csv-file').value = ""; 
             updateFileName();
           }
         }
