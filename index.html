@@ -631,25 +631,23 @@
           </div>
         </div>
         <table style="width:100%; border-collapse:collapse; font-size:13px;">
-          <thead>
-            <tr style="background:#334155; color:#fff;">
-              <th style="padding:8px;border:1px solid #ccc;text-align:left;">คลินิก</th>
-              <th style="padding:8px;border:1px solid #ccc;">เลข ว.</th>
-              <th style="padding:8px;border:1px solid #ccc;text-align:left;">ชื่อแพทย์</th>
-              <th style="padding:8px;border:1px solid #ccc;">รวม (เคส)</th>
-              <th style="padding:8px;border:1px solid #ccc;">เสร็จ (เคส)</th>
-              <th style="padding:8px;border:1px solid #ccc;">% ความสำเร็จ</th>
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-          <tfoot>
-            <tr style="background:#f1f5f9; font-weight:bold;">
-              <td style="padding:8px;border:1px solid #ccc;" colspan="3">รวมทั้งหมด</td>
-              <td style="padding:8px;border:1px solid #ccc;text-align:right;">${gTotal.toLocaleString()}</td>
-              <td style="padding:8px;border:1px solid #ccc;text-align:right;">${gCompleted.toLocaleString()}</td>
-              <td style="padding:8px;border:1px solid #ccc;text-align:right;">${percent}%</td>
-            </tr>
-          </tfoot>
+          <tr style="background:#334155; color:#fff;">
+            <th style="padding:8px;border:1px solid #ccc;text-align:left;">คลินิก</th>
+            <th style="padding:8px;border:1px solid #ccc;">เลข ว.</th>
+            <th style="padding:8px;border:1px solid #ccc;text-align:left;">ชื่อแพทย์</th>
+            <th style="padding:8px;border:1px solid #ccc;">รวม (เคส)</th>
+            <th style="padding:8px;border:1px solid #ccc;">เสร็จ (เคส)</th>
+            <th style="padding:8px;border:1px solid #ccc;">% ความสำเร็จ</th>
+          </tr>
+          
+          ${rowsHtml}
+          
+          <tr style="background:#f1f5f9; font-weight:bold; color:#111;">
+            <td style="padding:8px;border:1px solid #ccc; text-align:center;" colspan="3">รวมทั้งหมด</td>
+            <td style="padding:8px;border:1px solid #ccc;text-align:right;">${gTotal.toLocaleString()}</td>
+            <td style="padding:8px;border:1px solid #ccc;text-align:right;">${gCompleted.toLocaleString()}</td>
+            <td style="padding:8px;border:1px solid #ccc;text-align:right;">${percent}%</td>
+          </tr>
         </table>
         <div style="margin-top:26px; font-size:12px; color:#666; border-top:1px solid #ddd; padding-top:10px; text-align:center;">
           <p>ผู้จัดทำ: <strong>ณฐพล มูลศาสตร์</strong> &nbsp;|&nbsp; นักวิชาการคอมพิวเตอร์ กลุ่มงานสุขภาพดิจิทัล</p>
