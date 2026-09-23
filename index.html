@@ -5,110 +5,206 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ระบบรายงานผลการลงข้อมูลแพทย์</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- นำเข้า Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- นำเข้า PapaParse สำหรับอ่านไฟล์ CSV -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    * { font-family: 'Kanit', sans-serif; }
+    body {
+      background: linear-gradient(135deg, #eef2f7 0%, #e0e8f5 100%);
+      min-height: 100vh;
+    }
+    .header-gradient {
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #60a5fa 100%);
+    }
+    .tab-btn {
+      transition: all 0.25s ease;
+      position: relative;
+    }
+    .tab-active {
+      color: #2563eb;
+      font-weight: 700;
+    }
+    .tab-active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #2563eb, #60a5fa);
+      border-radius: 3px;
+    }
+    .card-hover {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+    table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    tbody tr {
+      transition: background-color 0.15s ease;
+    }
+    ::-webkit-scrollbar { height: 8px; width: 8px; }
+    ::-webkit-scrollbar-thumb { background: #93c5fd; border-radius: 4px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      transition: all 0.2s ease;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(37, 99, 235, 0.35);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      transition: all 0.2s ease;
+    }
+    .btn-success:hover {
+      background: linear-gradient(135deg, #15803d, #16a34a);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(22, 163, 74, 0.35);
+    }
+    .upload-zone {
+      transition: all 0.25s ease;
+    }
+    .upload-zone:hover {
+      border-color: #3b82f6;
+      background-color: #eff6ff;
+    }
+    .spinner {
+      border: 3px solid #dbeafe;
+      border-top: 3px solid #2563eb;
+      border-radius: 50%;
+      width: 20px; height: 20px;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+  </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="pb-12">
 
-  <div class="max-w-6xl mx-auto p-6 mt-8 bg-white rounded-lg shadow-md">
-    <h1 class="text-2xl font-bold text-center text-blue-700 mb-6">ระบบรายงานผลการลงข้อมูลแพทย์</h1>
-
-    <!-- Tabs Menu -->
-    <div class="flex border-b mb-6">
-      <button id="tab-report" class="py-2 px-4 text-blue-600 border-b-2 border-blue-600 font-semibold" onclick="switchTab('report')">📊 ดูรายงาน</button>
-      <button id="tab-upload" class="py-2 px-4 text-gray-500 hover:text-blue-600 font-semibold" onclick="switchTab('upload')">📤 อัปโหลดข้อมูล (CSV)</button>
+  <!-- Header -->
+  <div class="header-gradient shadow-lg">
+    <div class="max-w-6xl mx-auto px-6 py-8 text-center">
+      <h1 class="text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-3">
+        <span class="text-3xl">🏥</span> ระบบรายงานผลการลงข้อมูลแพทย์
+      </h1>
+      <p class="text-blue-100 text-sm mt-2">ติดตามและตรวจสอบสถานะการลงข้อมูลผู้ป่วยรายแพทย์แบบเรียลไทม์</p>
     </div>
+  </div>
 
-    <!-- TAB 1: ดูรายงาน -->
-    <div id="content-report">
-      <!-- ส่วนฟิลเตอร์ค้นหา -->
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 bg-gray-50 p-4 rounded border">
-        <div>
-          <label class="block text-sm font-medium text-gray-700">วันที่เริ่มต้น</label>
-          <input type="date" id="start-date" class="mt-1 w-full p-2 border rounded">
+  <div class="max-w-6xl mx-auto p-4 md:p-6 -mt-6">
+    <div class="bg-white rounded-2xl shadow-xl p-4 md:p-8">
+
+      <!-- Tabs Menu -->
+      <div class="flex border-b mb-6 gap-2">
+        <button id="tab-report" class="tab-btn tab-active py-3 px-5 rounded-t-lg" onclick="switchTab('report')">📊 ดูรายงาน</button>
+        <button id="tab-upload" class="tab-btn text-gray-500 hover:text-blue-600 py-3 px-5 rounded-t-lg" onclick="switchTab('upload')">📤 อัปโหลดข้อมูล (CSV)</button>
+      </div>
+
+      <!-- TAB 1: ดูรายงาน -->
+      <div id="content-report">
+        <!-- ส่วนฟิลเตอร์ค้นหา -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 bg-gradient-to-br from-slate-50 to-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
+            <input type="date" id="start-date" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
+            <input type="date" id="end-date" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. แพทย์</label>
+            <input type="text" id="filter-doccode" placeholder="เช่น 27447" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">🏥 เลือกคลินิก</label>
+            <select id="filter-clinic" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+              <option value="">-- ทุกคลินิก --</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button onclick="fetchReport()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-lg shadow">
+              🔍 ค้นหาข้อมูล
+            </button>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">ถึงวันที่</label>
-          <input type="date" id="end-date" class="mt-1 w-full p-2 border rounded">
+
+        <!-- สรุปตัวเลข -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-center">
+          <div class="card-hover bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border border-blue-200 shadow-sm">
+            <p class="text-sm text-blue-600 font-medium flex items-center justify-center gap-1">📋 เคสตรวจทั้งหมด</p>
+            <h3 class="text-3xl font-bold text-blue-800 mt-1" id="sum-total">0</h3>
+          </div>
+          <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl border border-green-200 shadow-sm">
+            <p class="text-sm text-green-600 font-medium flex items-center justify-center gap-1">✅ ลงข้อมูลแล้ว</p>
+            <h3 class="text-3xl font-bold text-green-800 mt-1" id="sum-completed">0</h3>
+          </div>
+          <div class="card-hover bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl border border-purple-200 shadow-sm">
+            <p class="text-sm text-purple-600 font-medium flex items-center justify-center gap-1">📈 อัตราความสำเร็จ</p>
+            <h3 class="text-3xl font-bold text-purple-800 mt-1" id="sum-percent">0.0%</h3>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">เลข ว. แพทย์</label>
-          <input type="text" id="filter-doccode" placeholder="เช่น 27447 (เว้นว่างเพื่อดูทั้งหมด)" class="mt-1 w-full p-2 border rounded">
+
+        <!-- ตารางแสดงผล -->
+        <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm max-h-[500px] overflow-y-auto">
+          <table class="min-w-full bg-white">
+            <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white text-sm">
+              <tr>
+                <th class="py-3 px-4 border-b border-slate-600 text-left">คลินิก</th>
+                <th class="py-3 px-4 border-b border-slate-600">เลข ว.</th>
+                <th class="py-3 px-4 border-b border-slate-600 text-left">ชื่อแพทย์</th>
+                <th class="py-3 px-4 border-b border-slate-600 text-right">รวม (เคส)</th>
+                <th class="py-3 px-4 border-b border-slate-600 text-right">เสร็จ (เคส)</th>
+                <th class="py-3 px-4 border-b border-slate-600 text-right">% ความสำเร็จ</th>
+              </tr>
+            </thead>
+            <tbody id="report-table-body" class="text-center text-sm divide-y divide-gray-100">
+              <tr><td colspan="6" class="py-8 text-gray-400">👆 กรุณาเลือกวันที่และกดค้นหา</td></tr>
+            </tbody>
+          </table>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">เลือกคลินิก</label>
-          <select id="filter-clinic" class="mt-1 w-full p-2 border rounded bg-white">
-            <option value="">-- ทุกคลินิก --</option>
-          </select>
+      </div>
+
+      <!-- TAB 2: อัปโหลดข้อมูล -->
+      <div id="content-upload" class="hidden fade-in">
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg shadow-sm">
+          <p class="text-sm text-yellow-800">
+            <strong>💡 คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code class="bg-yellow-100 px-1.5 py-0.5 rounded">.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ
+          </p>
         </div>
-        <div class="flex items-end">
-          <button onclick="fetchReport()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">
-            🔍 ค้นหาข้อมูล
+
+        <div class="upload-zone border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center bg-gray-50">
+          <div class="text-5xl mb-3">📁</div>
+          <input type="file" id="csv-file" accept=".csv" class="hidden" onchange="updateFileName()">
+          <label for="csv-file" class="cursor-pointer bg-white border border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-800 font-semibold py-2.5 px-6 rounded-lg inline-block mb-3 shadow-sm transition">
+            เลือกไฟล์ CSV
+          </label>
+          <p id="file-name" class="text-gray-500 text-sm mb-5">ยังไม่ได้เลือกไฟล์</p>
+
+          <button onclick="processAndUploadCSV()" id="upload-btn" class="btn-success text-white font-bold py-2.5 px-8 rounded-lg shadow hidden">
+            🚀 เริ่มอัปโหลดเข้าฐานข้อมูล
           </button>
         </div>
+
+        <div id="upload-status" class="mt-6 text-center text-lg font-semibold hidden bg-gray-50 py-4 rounded-xl"></div>
       </div>
 
-      <!-- สรุปตัวเลข -->
-      <div class="grid grid-cols-3 gap-4 mb-6 text-center">
-        <div class="bg-blue-100 p-4 rounded border border-blue-200">
-          <p class="text-sm text-blue-600">เคสตรวจทั้งหมด</p>
-          <h3 class="text-2xl font-bold" id="sum-total">0</h3>
-        </div>
-        <div class="bg-green-100 p-4 rounded border border-green-200">
-          <p class="text-sm text-green-600">ลงข้อมูลแล้ว</p>
-          <h3 class="text-2xl font-bold" id="sum-completed">0</h3>
-        </div>
-        <div class="bg-purple-100 p-4 rounded border border-purple-200">
-          <p class="text-sm text-purple-600">อัตราความสำเร็จ</p>
-          <h3 class="text-2xl font-bold" id="sum-percent">0.0%</h3>
-        </div>
-      </div>
-
-      <!-- ตารางแสดงผล -->
-      <div class="overflow-x-auto">
-        <table class="min-w-full bg-white border">
-          <thead class="bg-gray-800 text-white">
-            <tr>
-              <th class="py-2 px-4 border">คลินิก</th>
-              <th class="py-2 px-4 border">เลข ว.</th>
-              <th class="py-2 px-4 border">ชื่อแพทย์</th>
-              <th class="py-2 px-4 border text-right">รวม (เคส)</th>
-              <th class="py-2 px-4 border text-right">เสร็จ (เคส)</th>
-              <th class="py-2 px-4 border text-right">% ความสำเร็จ</th>
-            </tr>
-          </thead>
-          <tbody id="report-table-body" class="text-center text-sm">
-            <tr><td colspan="6" class="py-4 text-gray-500">กรุณาเลือกวันที่และกดค้นหา</td></tr>
-          </tbody>
-        </table>
-      </div>
     </div>
-
-    <!-- TAB 2: อัปโหลดข้อมูล -->
-    <div id="content-upload" class="hidden">
-      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-        <p class="text-sm text-yellow-700">
-          <strong>คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code>.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ
-        </p>
-      </div>
-
-      <div class="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center bg-gray-50">
-        <input type="file" id="csv-file" accept=".csv" class="hidden" onchange="updateFileName()">
-        <label for="csv-file" class="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-block mb-3">
-          📁 เลือกไฟล์ CSV
-        </label>
-        <p id="file-name" class="text-gray-600 text-sm mb-4">ยังไม่ได้เลือกไฟล์</p>
-        
-        <button onclick="processAndUploadCSV()" id="upload-btn" class="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-700 hidden">
-          🚀 เริ่มอัปโหลดเข้าฐานข้อมูล
-        </button>
-      </div>
-
-      <div id="upload-status" class="mt-6 text-center text-lg font-semibold hidden"></div>
-    </div>
-
   </div>
 
   <script>
@@ -118,16 +214,16 @@
     function switchTab(tab) {
       document.getElementById('content-report').classList.add('hidden');
       document.getElementById('content-upload').classList.add('hidden');
-      document.getElementById('tab-report').classList.remove('text-blue-600', 'border-blue-600');
+
+      document.getElementById('tab-report').classList.remove('tab-active');
       document.getElementById('tab-report').classList.add('text-gray-500');
-      document.getElementById('tab-upload').classList.remove('text-blue-600', 'border-blue-600');
+      document.getElementById('tab-upload').classList.remove('tab-active');
       document.getElementById('tab-upload').classList.add('text-gray-500');
 
       document.getElementById(`content-${tab}`).classList.remove('hidden');
-      document.getElementById(`tab-${tab}`).classList.add('text-blue-600', 'border-blue-600');
+      document.getElementById(`tab-${tab}`).classList.add('tab-active');
       document.getElementById(`tab-${tab}`).classList.remove('text-gray-500');
 
-      // ถ้ากดมาที่หน้าดูรายงาน ให้โหลดรายชื่อคลินิกลง Dropdown รอไว้
       if(tab === 'report') {
         loadClinicDropdown();
       }
@@ -151,7 +247,6 @@
         .select('clinic');
 
       if (!error && data) {
-        // กรองชื่อคลินิกไม่ให้ซ้ำกัน
         const clinics = [...new Set(data.map(item => item.clinic))].sort();
         clinics.forEach(clinic => {
           const opt = document.createElement('option');
@@ -162,13 +257,12 @@
       }
     }
 
-    // โหลดรายชื่อคลินิกลง Dropdown ตั้งแต่เปิดเว็บ
     window.onload = function() {
       loadClinicDropdown();
     };
 
     // ==========================================
-    // 3. ฟังก์ชันดูรายงาน (Tab 1 - รองรับกรองเลข ว. และคลินิก)
+    // 3. ฟังก์ชันดูรายงาน (Tab 1)
     // ==========================================
     async function fetchReport() {
       const startDate = document.getElementById('start-date').value;
@@ -182,21 +276,18 @@
         return;
       }
 
-      tbody.innerHTML = '<tr><td colspan="6" class="py-4">⏳ กำลังค้นหาข้อมูล...</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="6" class="py-8"><span class="spinner"></span>กำลังค้นหาข้อมูล...</td></tr>`;
 
-      // สร้าง Query พื้นฐานตามวันที่
       let query = supabaseClient
         .from('opd_summary')
         .select('*')
         .gte('regist_date', startDate)
         .lte('regist_date', endDate);
 
-      // ถ้ามีการกรองคลินิก
       if (filterClinic) {
         query = query.eq('clinic', filterClinic);
       }
 
-      // ถ้ามีการกรองเลข ว.
       if (filterDocCode) {
         query = query.ilike('doc_code', `%${filterDocCode}%`);
       }
@@ -204,12 +295,12 @@
       const { data, error } = await query;
 
       if (error) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-red-500">Error: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-red-500">❌ Error: ${error.message}</td></tr>`;
         return;
       }
 
       if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-gray-500">❌ ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-gray-500">❌ ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา</td></tr>';
         document.getElementById('sum-total').innerText = '0';
         document.getElementById('sum-completed').innerText = '0';
         document.getElementById('sum-percent').innerText = '0.0%';
@@ -243,17 +334,20 @@
       document.getElementById('sum-percent').innerText = `${percent}%`;
 
       let html = '';
-      list.forEach(item => {
+      list.forEach((item, idx) => {
         const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
-        let rowClass = pct < 50 ? 'bg-red-50' : 'hover:bg-gray-50';
+        let rowClass = pct < 50 
+          ? 'bg-red-50 hover:bg-red-100' 
+          : (idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-slate-50 hover:bg-blue-50');
+        let pctColor = pct < 50 ? 'text-red-600' : (pct >= 90 ? 'text-green-600' : 'text-blue-600');
         html += `
-          <tr class="border-b ${rowClass}">
-            <td class="py-2 px-4 text-left">${item.clinic}</td>
-            <td class="py-2 px-4">${item.docId}</td>
-            <td class="py-2 px-4 text-left">${item.docName}</td>
-            <td class="py-2 px-4 text-right">${item.total.toLocaleString()}</td>
-            <td class="py-2 px-4 text-right text-green-600">${item.completed.toLocaleString()}</td>
-            <td class="py-2 px-4 text-right font-bold">${pct}%</td>
+          <tr class="${rowClass}">
+            <td class="py-2.5 px-4 text-left font-medium text-gray-700">${item.clinic}</td>
+            <td class="py-2.5 px-4">${item.docId}</td>
+            <td class="py-2.5 px-4 text-left">${item.docName}</td>
+            <td class="py-2.5 px-4 text-right">${item.total.toLocaleString()}</td>
+            <td class="py-2.5 px-4 text-right text-green-600 font-medium">${item.completed.toLocaleString()}</td>
+            <td class="py-2.5 px-4 text-right font-bold ${pctColor}">${pct}%</td>
           </tr>
         `;
       });
@@ -269,7 +363,7 @@
       const uploadBtn = document.getElementById('upload-btn');
       
       if (fileInput.files.length > 0) {
-        fileNameDisplay.innerHTML = `ไฟล์ที่เลือก: <strong>${fileInput.files[0].name}</strong>`;
+        fileNameDisplay.innerHTML = `📄 ไฟล์ที่เลือก: <strong>${fileInput.files[0].name}</strong>`;
         uploadBtn.classList.remove('hidden');
       } else {
         fileNameDisplay.innerText = 'ยังไม่ได้เลือกไฟล์';
@@ -298,14 +392,14 @@
       const statusDiv = document.getElementById('upload-status');
       statusDiv.classList.remove('hidden', 'text-green-600', 'text-red-600');
       statusDiv.classList.add('text-blue-600');
-      statusDiv.innerText = '⏳ กำลังอ่านไฟล์ CSV...';
+      statusDiv.innerHTML = `<span class="spinner"></span>กำลังอ่านไฟล์ CSV...`;
 
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         complete: async function(results) {
           const rows = results.data;
-          statusDiv.innerText = `⏳ อ่านสำเร็จ ${rows.length.toLocaleString()} แถว กำลังส่งขึ้นฐานข้อมูล...`;
+          statusDiv.innerHTML = `<span class="spinner"></span>อ่านสำเร็จ ${rows.length.toLocaleString()} แถว กำลังส่งขึ้นฐานข้อมูล...`;
 
           const dataToInsert = [];
           
@@ -360,7 +454,7 @@
             statusDiv.innerText = `✅ อัปโหลดและอัปเดตข้อมูลสำเร็จเรียบร้อย!`;
             document.getElementById('csv-file').value = ""; 
             updateFileName();
-            loadClinicDropdown(); // อัปเดตรายชื่อคลินิกเผื่อมีคลินิกใหม่
+            loadClinicDropdown();
           }
         }
       });
