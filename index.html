@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบรายงานผลการลงข้อมูลแพทย์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- นำเข้า Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- นำเข้า PapaParse สำหรับอ่านไฟล์ CSV -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+  <div class="max-w-6xl mx-auto p-6 mt-8 bg-white rounded-lg shadow-md">
+    <h1 class="text-2xl font-bold text-center text-blue-700 mb-6">ระบบรายงานผลการลงข้อมูลแพทย์</h1>
+
+    <!-- Tabs Menu -->
+    <div class="flex border-b mb-6">
+      <button id="tab-report" class="py-2 px-4 text-blue-600 border-b-2 border-blue-600 font-semibold" onclick="switchTab('report')">📊 ดูรายงาน</button>
+      <button id="tab-upload" class="py-2 px-4 text-gray-500 hover:text-blue-600 font-semibold" onclick="switchTab('upload')">📤 อัปโหลดข้อมูล (CSV)</button>
+    </div>
+
+    <!-- TAB 1: ดูรายงาน -->
+    <div id="content-report">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded border">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">วันที่เริ่มต้น</label>
+          <input type="date" id="start-date" class="mt-1 w-full p-2 border rounded">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">ถึงวันที่</label>
+          <input type="date" id="end-date" class="mt-1 w-full p-2 border rounded">
+        </div>
+        <div class="flex items-end">
+          <button onclick="fetchReport()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">
+            🔍 ค้นหาข้อมูล
+          </button>
+        </div>
+      </div>
+
+      <!-- สรุปตัวเลข -->
+      <div class="grid grid-cols-3 gap-4 mb-6 text-center">
+        <div class="bg-blue-100 p-4 rounded border border-blue-200">
+          <p class="text-sm text-blue-600">เคสตรวจทั้งหมด</p>
+          <h3 class="text-2xl font-bold" id="sum-total">0</h3>
+        </div>
+        <div class="bg-green-100 p-4 rounded border border-green-200">
+          <p class="text-sm text-green-600">ลงข้อมูลแล้ว</p>
+          <h3 class="text-2xl font-bold" id="sum-completed">0</h3>
+        </div>
+        <div class="bg-purple-100 p-4 rounded border border-purple-200">
+          <p class="text-sm text-purple-600">อัตราความสำเร็จ</p>
+          <h3 class="text-2xl font-bold" id="sum-percent">0.0%</h3>
+        </div>
+      </div>
+
+      <!-- ตารางแสดงผล -->
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border">
+          <thead class="bg-gray-800 text-white">
+            <tr>
+              <th class="py-2 px-4 border">คลินิก</th>
+              <th class="py-2 px-4 border">เลข ว.</th>
+              <th class="py-2 px-4 border">ชื่อแพทย์</th>
+              <th class="py-2 px-4 border text-right">รวม (เคส)</th>
+              <th class="py-2 px-4 border text-right">เสร็จ (เคส)</th>
+              <th class="py-2 px-4 border text-right">% ความสำเร็จ</th>
+            </tr>
+          </thead>
+          <tbody id="report-table-body" class="text-center text-sm">
+            <tr><td colspan="6" class="py-4 text-gray-500">กรุณาเลือกวันที่และกดค้นหา</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 2: อัปโหลดข้อมูล -->
+    <div id="content-upload" class="hidden">
+      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+        <p class="text-sm text-yellow-700">
+          <strong>คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server ออกมาเป็นไฟล์ <code>.csv</code> (ต้องมีบรรทัดหัวคอลัมน์) จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะทำการสรุปข้อมูลและส่งขึ้นฐานข้อมูลให้อัตโนมัติ
+        </p>
+      </div>
+
+      <div class="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center bg-gray-50">
+        <input type="file" id="csv-file" accept=".csv" class="hidden" onchange="updateFileName()">
+        <label for="csv-file" class="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-block mb-3">
+          📁 เลือกไฟล์ CSV
+        </label>
+        <p id="file-name" class="text-gray-600 text-sm mb-4">ยังไม่ได้เลือกไฟล์</p>
+        
+        <button onclick="processAndUploadCSV()" id="upload-btn" class="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-700 hidden">
+          🚀 เริ่มประมวลผลและอัปโหลด
+        </button>
+      </div>
+
+      <div id="upload-status" class="mt-6 text-center text-lg font-semibold hidden"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // ==========================================
+    // ⚙️ ตั้งค่า Supabase (เอามาจาก Project Settings -> API)
+    // ==========================================
+    const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';   // เปลี่ยนตรงนี้
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8' ; // เปลี่ยนตรงนี้
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ==========================================
+    // ส่วนควบคุม UI (สลับหน้า)
+    // ==========================================
+    function switchTab(tab) {
+      document.getElementById('content-report').classList.add('hidden');
+      document.getElementById('content-upload').classList.add('hidden');
+      document.getElementById('tab-report').classList.remove('text-blue-600', 'border-blue-600');
+      document.getElementById('tab-report').classList.add('text-gray-500');
+      document.getElementById('tab-upload').classList.remove('text-blue-600', 'border-blue-600');
+      document.getElementById('tab-upload').classList.add('text-gray-500');
+
+      document.getElementById(`content-${tab}`).classList.remove('hidden');
+      document.getElementById(`tab-${tab}`).classList.add('text-blue-600', 'border-blue-600');
+      document.getElementById(`tab-${tab}`).classList.remove('text-gray-500');
+    }
+
+    // ==========================================
+    // ฟังก์ชันดูรายงาน (Tab 1)
+    // ==========================================
+    async function fetchReport() {
+      const startDate = document.getElementById('start-date').value;
+      const endDate = document.getElementById('end-date').value;
+      const tbody = document.getElementById('report-table-body');
+
+      if (!startDate || !endDate) {
+        alert("กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด");
+        return;
+      }
+
+      tbody.innerHTML = '<tr><td colspan="6" class="py-4">⏳ กำลังโหลดข้อมูล...</td></tr>';
+
+      // ดึงข้อมูลแบบสรุปรวม (Group By Clinic, Doc_code, Doc_name) ด้วย Supabase RPC หรือดึงมาบวกใน JS
+      const { data, error } = await supabase
+        .from('opd_summary')
+        .select('*')
+        .gte('regist_date', startDate)
+        .lte('regist_date', endDate);
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-red-500">Error: ${error.message}</td></tr>`;
+        return;
+      }
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-gray-500">❌ ไม่พบข้อมูลในช่วงเวลาที่ระบุ</td></tr>';
+        document.getElementById('sum-total').innerText = '0';
+        document.getElementById('sum-completed').innerText = '0';
+        document.getElementById('sum-percent').innerText = '0.0%';
+        return;
+      }
+
+      // นำข้อมูลของหลายวันมารวมกัน (กรณีเลือกเป็นช่วงวันที่)
+      const aggMap = {};
+      let gTotal = 0;
+      let gCompleted = 0;
+
+      data.forEach(row => {
+        const key = `${row.clinic}_${row.doc_code}`;
+        if(!aggMap[key]) {
+          aggMap[key] = { clinic: row.clinic, docId: row.doc_code, docName: row.doc_name, total: 0, completed: 0 };
+        }
+        aggMap[key].total += row.total_cases;
+        aggMap[key].completed += row.completed_cases;
+        gTotal += row.total_cases;
+        gCompleted += row.completed_cases;
+      });
+
+      const list = Object.values(aggMap);
+      list.sort((a, b) => {
+        if (a.clinic !== b.clinic) return a.clinic.localeCompare(b.clinic);
+        return b.completed - a.completed;
+      });
+
+      // แสดงผลตัวเลขรวม
+      document.getElementById('sum-total').innerText = gTotal.toLocaleString();
+      document.getElementById('sum-completed').innerText = gCompleted.toLocaleString();
+      const percent = gTotal > 0 ? ((gCompleted / gTotal) * 100).toFixed(1) : '0.0';
+      document.getElementById('sum-percent').innerText = `${percent}%`;
+
+      // วาดตาราง
+      let html = '';
+      list.forEach(item => {
+        const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
+        let rowClass = pct < 50 ? 'bg-red-50' : 'hover:bg-gray-50';
+        html += `
+          <tr class="border-b ${rowClass}">
+            <td class="py-2 px-4 text-left">${item.clinic}</td>
+            <td class="py-2 px-4">${item.docId}</td>
+            <td class="py-2 px-4 text-left">${item.docName}</td>
+            <td class="py-2 px-4 text-right">${item.total.toLocaleString()}</td>
+            <td class="py-2 px-4 text-right text-green-600">${item.completed.toLocaleString()}</td>
+            <td class="py-2 px-4 text-right font-bold">${pct}%</td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = html;
+    }
+
+    // ==========================================
+    // ฟังก์ชันอัปโหลด CSV (Tab 2)
+    // ==========================================
+    function updateFileName() {
+      const fileInput = document.getElementById('csv-file');
+      const fileNameDisplay = document.getElementById('file-name');
+      const uploadBtn = document.getElementById('upload-btn');
+      
+      if (fileInput.files.length > 0) {
+        fileNameDisplay.innerHTML = `ไฟล์ที่เลือก: <strong>${fileInput.files[0].name}</strong>`;
+        uploadBtn.classList.remove('hidden');
+      } else {
+        fileNameDisplay.innerText = 'ยังไม่ได้เลือกไฟล์';
+        uploadBtn.classList.add('hidden');
+      }
+    }
+
+    // แปลง พ.ศ. (DD/MM/YYYY) เป็น ISO Date (YYYY-MM-DD)
+    function parseThaiDateToISO(thaiDateStr) {
+      if(!thaiDateStr) return null;
+      let parts = thaiDateStr.split('/');
+      if(parts.length === 3) {
+        let d = parts[0].padStart(2, '0');
+        let m = parts[1].padStart(2, '0');
+        let y = parseInt(parts[2], 10);
+        if(y > 2500) y -= 543;
+        return `${y}-${m}-${d}`;
+      }
+      return null;
+    }
+
+    function processAndUploadCSV() {
+      const fileInput = document.getElementById('csv-file');
+      if (fileInput.files.length === 0) return;
+
+      const file = fileInput.files[0];
+      const statusDiv = document.getElementById('upload-status');
+      statusDiv.classList.remove('hidden', 'text-green-600', 'text-red-600');
+      statusDiv.classList.add('text-blue-600');
+      statusDiv.innerText = '⏳ กำลังอ่านและประมวลผลไฟล์ (อาจใช้เวลาสักครู่)...';
+
+      // ใช้ PapaParse อ่านไฟล์ CSV
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async function(results) {
+          const rows = results.data;
+          statusDiv.innerText = `⏳ อ่านสำเร็จ ${rows.length.toLocaleString()} บรรทัด กำลังสรุปข้อมูล...`;
+
+          // สรุปยอดข้อมูล
+          const summaryMap = {};
+          
+          for (let row of rows) {
+            // อิงตามชื่อคอลัมน์จากการ Query SQL
+            let dateStr = row['RegistDate'];
+            let clinic = row['แผนกที่แพทย์ตรวจ'] || 'ไม่ระบุแผนก';
+            let docCode = row['DocCode'] || '';
+            let docName = row['แพทย์'] || '';
+            let diag = (row['D_DiagNote'] || '').trim();
+            let note = (row['D_NoteToNurse'] || '').trim();
+
+            let dateISO = parseThaiDateToISO(dateStr);
+            if(!dateISO) continue;
+            if(!docCode && !docName) continue;
+
+            let key = `${dateISO}_${clinic}_${docCode}_${docName}`;
+            
+            if(!summaryMap[key]) {
+              summaryMap[key] = {
+                regist_date: dateISO,
+                clinic: clinic,
+                doc_code: docCode,
+                doc_name: docName,
+                total_cases: 0,
+                completed_cases: 0
+              };
+            }
+
+            summaryMap[key].total_cases += 1;
+
+            let isDiagEmpty = (diag === '' || diag.toUpperCase() === 'NULL');
+            let isNoteEmpty = (note === '' || note.toUpperCase() === 'NULL');
+            if (!(isDiagEmpty && isNoteEmpty)) {
+              summaryMap[key].completed_cases += 1;
+            }
+          }
+
+          const dataToInsert = Object.values(summaryMap);
+          statusDiv.innerText = `⏳ สรุปข้อมูลได้ ${dataToInsert.length} รายการ... กำลังส่งขึ้นฐานข้อมูล...`;
+
+          // ทยอยอัปโหลดทีละ 1000 รายการ ป้องกันการ Timeout
+          const batchSize = 1000;
+          let hasError = false;
+
+          for (let i = 0; i < dataToInsert.length; i += batchSize) {
+            const batch = dataToInsert.slice(i, i + batchSize);
+            // .upsert() จะเพิ่มข้อมูลใหม่ และอัปเดตข้อมูลเดิมหากพบวันที่+คลินิก+แพทย์ซ้ำ
+            const { error } = await supabase
+              .from('opd_summary')
+              .upsert(batch, { onConflict: 'regist_date, clinic, doc_code, doc_name' });
+            
+            if (error) {
+              console.error(error);
+              hasError = true;
+              break;
+            }
+          }
+
+          if (hasError) {
+            statusDiv.classList.replace('text-blue-600', 'text-red-600');
+            statusDiv.innerText = '❌ เกิดข้อผิดพลาดในการส่งข้อมูลขึ้นฐานข้อมูล ดูรายละเอียดใน Console';
+          } else {
+            statusDiv.classList.replace('text-blue-600', 'text-green-600');
+            statusDiv.innerText = `✅ อัปโหลดและอัปเดตข้อมูลสำเร็จเรียบร้อย!`;
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
