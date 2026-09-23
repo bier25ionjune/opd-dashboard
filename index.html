@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>ระบบรายงานผลการลงข้อมูลแพทย์</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +13,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     * { font-family: 'Kanit', sans-serif; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
       background: linear-gradient(135deg, #eef2f7 0%, #e0e8f5 100%);
       min-height: 100vh;
@@ -92,78 +93,147 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .fade-in { animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+
+    /* ป้องกัน iOS ซูมอัตโนมัติเมื่อแตะ input/select (ต้องมี font-size >= 16px) */
+    input, select, textarea, button { font-size: 16px; }
+
+    /* ============================================= */
+    /* Responsive Table -> Card view บนจอมือถือ */
+    /* ============================================= */
+    @media (max-width: 767px) {
+      #report-table-body td[colspan] {
+        display: block;
+        text-align: center !important;
+        padding-left: 1rem !important;
+      }
+      table.responsive-table thead {
+        display: none;
+      }
+      table.responsive-table, 
+      table.responsive-table tbody, 
+      table.responsive-table tr, 
+      table.responsive-table td {
+        display: block;
+        width: 100%;
+      }
+      table.responsive-table tr {
+        margin-bottom: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        background: #fff !important;
+      }
+      table.responsive-table td {
+        text-align: right !important;
+        padding: 10px 14px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        position: relative;
+        padding-left: 45% !important;
+        min-height: 20px;
+      }
+      table.responsive-table td:last-child {
+        border-bottom: none !important;
+      }
+      table.responsive-table td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 14px;
+        top: 10px;
+        font-weight: 600;
+        color: #64748b;
+        text-align: left;
+        font-size: 0.8rem;
+      }
+      table.responsive-table td.cell-clinic {
+        background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        font-weight: 700;
+        color: #1e3a8a;
+        font-size: 1rem;
+      }
+      table.responsive-table td.cell-clinic::before {
+        content: none;
+      }
+    }
   </style>
 </head>
 <body class="pb-12">
 
   <!-- Header -->
   <div class="header-gradient shadow-lg">
-    <div class="max-w-6xl mx-auto px-6 py-8 text-center">
-      <h1 class="text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-3">
-        <span class="text-3xl">🏥</span> ระบบรายงานผลการลงข้อมูลแพทย์
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-center">
+      <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-2 sm:gap-3 leading-snug">
+        <span class="text-2xl sm:text-3xl">🏥</span>
+        <span>ระบบรายงานผลการลงข้อมูลแพทย์</span>
       </h1>
-      <p class="text-blue-100 text-sm mt-2">ติดตามและตรวจสอบสถานะการลงข้อมูลผู้ป่วยรายแพทย์</p>
+      <p class="text-blue-100 text-xs sm:text-sm mt-2">ติดตามและตรวจสอบสถานะการลงข้อมูลผู้ป่วยรายแพทย์</p>
     </div>
   </div>
 
-  <div class="max-w-6xl mx-auto p-4 md:p-6 -mt-6">
-    <div class="bg-white rounded-2xl shadow-xl p-4 md:p-8">
+  <div class="max-w-6xl mx-auto p-3 sm:p-4 md:p-6 -mt-4 sm:-mt-6">
+    <div class="bg-white rounded-2xl shadow-xl p-3 sm:p-4 md:p-8">
 
       <!-- Tabs Menu -->
-      <div class="flex border-b mb-6 gap-2">
-        <button id="tab-report" class="tab-btn tab-active py-3 px-5 rounded-t-lg" onclick="switchTab('report')">📊 ดูรายงาน</button>
-        <button id="tab-upload" class="tab-btn text-gray-500 hover:text-blue-600 py-3 px-5 rounded-t-lg" onclick="switchTab('upload')">📤 อัปโหลดข้อมูล (CSV)</button>
+      <div class="flex border-b mb-4 sm:mb-6 gap-1 sm:gap-2">
+        <button id="tab-report" class="tab-btn tab-active flex-1 sm:flex-none text-center py-2.5 sm:py-3 px-2 sm:px-5 rounded-t-lg text-xs sm:text-base" onclick="switchTab('report')">📊 <span class="hidden xs:inline">ดูรายงาน</span><span class="xs:hidden">รายงาน</span></button>
+        <button id="tab-upload" class="tab-btn text-gray-500 hover:text-blue-600 flex-1 sm:flex-none text-center py-2.5 sm:py-3 px-2 sm:px-5 rounded-t-lg text-xs sm:text-base" onclick="switchTab('upload')">📤 <span class="hidden xs:inline">อัปโหลดข้อมูล (CSV)</span><span class="xs:hidden">อัปโหลด</span></button>
       </div>
 
       <!-- TAB 1: ดูรายงาน -->
       <div id="content-report">
         <!-- ส่วนฟิลเตอร์ค้นหา -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 bg-gradient-to-br from-slate-50 to-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
-            <input type="date" id="start-date" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6 bg-gradient-to-br from-slate-50 to-blue-50 p-3 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
+          <div class="col-span-1">
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
+            <input type="date" id="start-date" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
-            <input type="date" id="end-date" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+          <div class="col-span-1">
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
+            <input type="date" id="end-date" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. แพทย์</label>
-            <input type="text" id="filter-doccode" placeholder="เช่น 27447" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+          <div class="col-span-1">
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. แพทย์</label>
+            <input type="text" id="filter-doccode" placeholder="เช่น 27447" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">🏥 เลือกคลินิก</label>
-            <select id="filter-clinic" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+          <div class="col-span-1">
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 เลือกคลินิก</label>
+            <select id="filter-clinic" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
               <option value="">-- ทุกคลินิก --</option>
             </select>
           </div>
-          <div class="flex items-end">
-            <button onclick="fetchReport()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-lg shadow">
+          <div class="col-span-2 md:col-span-1 flex items-end">
+            <button onclick="fetchReport()" class="btn-primary w-full text-white font-bold py-2.5 sm:py-2.5 px-4 rounded-lg shadow text-sm sm:text-base">
               🔍 ค้นหาข้อมูล
             </button>
           </div>
         </div>
 
         <!-- สรุปตัวเลข -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-center">
-          <div class="card-hover bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border border-blue-200 shadow-sm">
-            <p class="text-sm text-blue-600 font-medium flex items-center justify-center gap-1">📋 เคสตรวจทั้งหมด</p>
-            <h3 class="text-3xl font-bold text-blue-800 mt-1" id="sum-total">0</h3>
+        <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-5 sm:mb-6 text-center">
+          <div class="card-hover bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 sm:p-5 rounded-xl border border-blue-200 shadow-sm">
+            <p class="text-[10px] sm:text-sm text-blue-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight">
+              <span>📋</span><span>เคสตรวจทั้งหมด</span>
+            </p>
+            <h3 class="text-lg sm:text-3xl font-bold text-blue-800 mt-1" id="sum-total">0</h3>
           </div>
-          <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl border border-green-200 shadow-sm">
-            <p class="text-sm text-green-600 font-medium flex items-center justify-center gap-1">✅ ลงข้อมูลแล้ว</p>
-            <h3 class="text-3xl font-bold text-green-800 mt-1" id="sum-completed">0</h3>
+          <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-2.5 sm:p-5 rounded-xl border border-green-200 shadow-sm">
+            <p class="text-[10px] sm:text-sm text-green-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight">
+              <span>✅</span><span>ลงข้อมูลแล้ว</span>
+            </p>
+            <h3 class="text-lg sm:text-3xl font-bold text-green-800 mt-1" id="sum-completed">0</h3>
           </div>
-          <div class="card-hover bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl border border-purple-200 shadow-sm">
-            <p class="text-sm text-purple-600 font-medium flex items-center justify-center gap-1">📈 อัตราความสำเร็จ</p>
-            <h3 class="text-3xl font-bold text-purple-800 mt-1" id="sum-percent">0.0%</h3>
+          <div class="card-hover bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 sm:p-5 rounded-xl border border-purple-200 shadow-sm">
+            <p class="text-[10px] sm:text-sm text-purple-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight">
+              <span>📈</span><span>อัตราความสำเร็จ</span>
+            </p>
+            <h3 class="text-lg sm:text-3xl font-bold text-purple-800 mt-1" id="sum-percent">0.0%</h3>
           </div>
         </div>
 
-        <!-- ตารางแสดงผล -->
+        <!-- ตารางแสดงผล (Desktop: ตาราง / Mobile: การ์ด) -->
         <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm max-h-[500px] overflow-y-auto">
-          <table class="min-w-full bg-white">
-            <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white text-sm">
+          <table class="min-w-full bg-white responsive-table">
+            <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white text-xs sm:text-sm">
               <tr>
                 <th class="py-3 px-4 border-b border-slate-600 text-left">คลินิก</th>
                 <th class="py-3 px-4 border-b border-slate-600">เลข ว.</th>
@@ -173,7 +243,7 @@
                 <th class="py-3 px-4 border-b border-slate-600 text-right">% ความสำเร็จ</th>
               </tr>
             </thead>
-            <tbody id="report-table-body" class="text-center text-sm divide-y divide-gray-100">
+            <tbody id="report-table-body" class="text-center text-xs sm:text-sm divide-y divide-gray-100">
               <tr><td colspan="6" class="py-8 text-gray-400">👆 กรุณาเลือกวันที่และกดค้นหา</td></tr>
             </tbody>
           </table>
@@ -182,26 +252,26 @@
 
       <!-- TAB 2: อัปโหลดข้อมูล -->
       <div id="content-upload" class="hidden fade-in">
-        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-lg shadow-sm">
-          <p class="text-sm text-yellow-800">
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-5 sm:mb-6 rounded-r-lg shadow-sm">
+          <p class="text-xs sm:text-sm text-yellow-800">
             <strong>💡 คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code class="bg-yellow-100 px-1.5 py-0.5 rounded">.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ
           </p>
         </div>
 
-        <div class="upload-zone border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center bg-gray-50">
-          <div class="text-5xl mb-3">📁</div>
+        <div class="upload-zone border-2 border-dashed border-gray-300 rounded-2xl p-6 sm:p-12 text-center bg-gray-50">
+          <div class="text-4xl sm:text-5xl mb-3">📁</div>
           <input type="file" id="csv-file" accept=".csv" class="hidden" onchange="updateFileName()">
-          <label for="csv-file" class="cursor-pointer bg-white border border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-800 font-semibold py-2.5 px-6 rounded-lg inline-block mb-3 shadow-sm transition">
+          <label for="csv-file" class="cursor-pointer bg-white border border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-800 font-semibold py-2.5 px-6 rounded-lg inline-block mb-3 shadow-sm transition w-full sm:w-auto text-sm sm:text-base">
             เลือกไฟล์ CSV
           </label>
-          <p id="file-name" class="text-gray-500 text-sm mb-5">ยังไม่ได้เลือกไฟล์</p>
+          <p id="file-name" class="text-gray-500 text-xs sm:text-sm mb-5 break-all px-2">ยังไม่ได้เลือกไฟล์</p>
 
-          <button onclick="processAndUploadCSV()" id="upload-btn" class="btn-success text-white font-bold py-2.5 px-8 rounded-lg shadow hidden">
+          <button onclick="processAndUploadCSV()" id="upload-btn" class="btn-success text-white font-bold py-2.5 px-6 sm:px-8 rounded-lg shadow hidden w-full sm:w-auto text-sm sm:text-base">
             🚀 เริ่มอัปโหลดเข้าฐานข้อมูล
           </button>
         </div>
 
-        <div id="upload-status" class="mt-6 text-center text-lg font-semibold hidden bg-gray-50 py-4 rounded-xl"></div>
+        <div id="upload-status" class="mt-6 text-center text-sm sm:text-lg font-semibold hidden bg-gray-50 py-4 rounded-xl px-2"></div>
       </div>
 
     </div>
@@ -342,12 +412,12 @@
         let pctColor = pct < 50 ? 'text-red-600' : (pct >= 90 ? 'text-green-600' : 'text-blue-600');
         html += `
           <tr class="${rowClass}">
-            <td class="py-2.5 px-4 text-left font-medium text-gray-700">${item.clinic}</td>
-            <td class="py-2.5 px-4">${item.docId}</td>
-            <td class="py-2.5 px-4 text-left">${item.docName}</td>
-            <td class="py-2.5 px-4 text-right">${item.total.toLocaleString()}</td>
-            <td class="py-2.5 px-4 text-right text-green-600 font-medium">${item.completed.toLocaleString()}</td>
-            <td class="py-2.5 px-4 text-right font-bold ${pctColor}">${pct}%</td>
+            <td class="cell-clinic py-2.5 px-4 text-left font-medium text-gray-700" data-label="คลินิก">${item.clinic}</td>
+            <td class="py-2.5 px-4" data-label="เลข ว.">${item.docId}</td>
+            <td class="py-2.5 px-4 text-left" data-label="ชื่อแพทย์">${item.docName}</td>
+            <td class="py-2.5 px-4 text-right" data-label="รวม (เคส)">${item.total.toLocaleString()}</td>
+            <td class="py-2.5 px-4 text-right text-green-600 font-medium" data-label="เสร็จ (เคส)">${item.completed.toLocaleString()}</td>
+            <td class="py-2.5 px-4 text-right font-bold ${pctColor}" data-label="% ความสำเร็จ">${pct}%</td>
           </tr>
         `;
       });
