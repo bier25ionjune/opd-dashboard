@@ -11,6 +11,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- นำเข้า PapaParse สำหรับอ่านไฟล์ CSV -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- นำเข้า SheetJS สำหรับ Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- นำเข้า html2canvas + jsPDF สำหรับ Export PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { font-family: 'Kanit', sans-serif; }
     html { -webkit-text-size-adjust: 100%; }
@@ -94,12 +99,10 @@
     .fade-in { animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
 
-    /* ป้องกัน iOS ซูมอัตโนมัติเมื่อแตะ input/select (ต้องมี font-size >= 16px) */
+    /* ป้องกัน iOS ซูมอัตโนมัติเมื่อแตะ input/select */
     input, select, textarea, button { font-size: 16px; }
 
-    /* ============================================= */
     /* Responsive Table -> Card view บนจอมือถือ */
-    /* ============================================= */
     @media (max-width: 767px) {
       #report-table-body td[colspan] {
         display: block;
@@ -175,12 +178,22 @@
 
       <!-- Tabs Menu -->
       <div class="flex border-b mb-4 sm:mb-6 gap-1 sm:gap-2">
-        <button id="tab-report" class="tab-btn tab-active flex-1 sm:flex-none text-center py-2.5 sm:py-3 px-2 sm:px-5 rounded-t-lg text-xs sm:text-base" onclick="switchTab('report')">📊 <span class="hidden xs:inline">ดูรายงาน</span><span class="xs:hidden">รายงาน</span></button>
-        <button id="tab-upload" class="tab-btn text-gray-500 hover:text-blue-600 flex-1 sm:flex-none text-center py-2.5 sm:py-3 px-2 sm:px-5 rounded-t-lg text-xs sm:text-base" onclick="switchTab('upload')">📤 <span class="hidden xs:inline">อัปโหลดข้อมูล (CSV)</span><span class="xs:hidden">อัปโหลด</span></button>
+        <button id="tab-report" class="tab-btn tab-active flex-1 sm:flex-none text-center py-2.5 sm:py-3 px-2 sm:px-5 rounded-t-lg text-xs sm:text-base" onclick="switchTab('report')">
+          📊 <span class="hidden xs:inline">ดูรายงาน</span><span class="xs:hidden">รายงาน</span>
+        </button>
+        <button id="tab-upload" class="tab-btn text-gray-500 hover:text-blue-600 flex-1 sm:flex-none text-center py-2.5 sm:py-3 px-2 sm:px-5 rounded-t-lg text-xs sm:text-base" onclick="switchTab('upload')">
+          📤 <span class="hidden xs:inline">อัปโหลดข้อมูล (CSV)</span><span class="xs:hidden">อัปโหลด</span>
+        </button>
       </div>
 
       <!-- TAB 1: ดูรายงาน -->
       <div id="content-report">
+        <!-- แผงแสดงสถานะข้อมูลในระบบ -->
+        <div id="data-availability-report" class="mb-4 sm:mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-indigo-900 flex items-start gap-2">
+          <span class="text-base sm:text-lg leading-none">ℹ️</span>
+          <div id="data-availability-report-content" class="leading-relaxed">กำลังตรวจสอบข้อมูลในระบบ...</div>
+        </div>
+
         <!-- ส่วนฟิลเตอร์ค้นหา -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6 bg-gradient-to-br from-slate-50 to-blue-50 p-3 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
           <div class="col-span-1">
@@ -230,7 +243,20 @@
           </div>
         </div>
 
-        <!-- ตารางแสดงผล (Desktop: ตาราง / Mobile: การ์ด) -->
+        <!-- แถบ Export -->
+        <div id="export-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 mb-3">
+          <p class="text-xs sm:text-sm text-gray-500">พบข้อมูลทั้งหมด <span id="result-count" class="font-bold text-gray-700">0</span> รายการ</p>
+          <div class="flex gap-2 w-full sm:w-auto">
+            <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition flex items-center justify-center gap-1">
+              📊 Export Excel
+            </button>
+            <button onclick="exportPDF()" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition flex items-center justify-center gap-1">
+              📄 Export PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- ตารางแสดงผล -->
         <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm max-h-[500px] overflow-y-auto">
           <table class="min-w-full bg-white responsive-table">
             <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white text-xs sm:text-sm">
@@ -252,9 +278,15 @@
 
       <!-- TAB 2: อัปโหลดข้อมูล -->
       <div id="content-upload" class="hidden fade-in">
+        <!-- แผงแสดงสถานะข้อมูลในระบบ -->
+        <div id="data-availability-upload" class="mb-4 sm:mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-indigo-900 flex items-start gap-2">
+          <span class="text-base sm:text-lg leading-none">ℹ️</span>
+          <div id="data-availability-upload-content" class="leading-relaxed">กำลังตรวจสอบข้อมูลในระบบ...</div>
+        </div>
+
         <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-5 sm:mb-6 rounded-r-lg shadow-sm">
           <p class="text-xs sm:text-sm text-yellow-800">
-            <strong>💡 คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code class="bg-yellow-100 px-1.5 py-0.5 rounded">.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ
+            <strong>💡 คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code class="bg-yellow-100 px-1.5 py-0.5 rounded">.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ ตรวจสอบด้านบนก่อนว่าข้อมูลวันที่ใดขาดหายไปบ้าง เพื่ออัปโหลดย้อนหลังให้ครบถ้วน
           </p>
         </div>
 
@@ -275,11 +307,30 @@
       </div>
 
     </div>
+
+    <!-- ผู้จัดทำ -->
+    <div class="text-center text-[11px] sm:text-xs text-gray-400 mt-5 pb-2">
+      <p>พัฒนาโดย <span class="font-semibold text-gray-500">ณฐพล มูลศาสตร์</span> — นักวิชาการคอมพิวเตอร์ กลุ่มงานสุขภาพดิจิทัล</p>
+    </div>
   </div>
 
   <script>
     // ==========================================
-    // 1. ฟังก์ชันสลับหน้า Tab
+    // 1. ตั้งค่า Supabase & ตัวแปรหลัก
+    // ==========================================
+    const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8';
+    
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let lastReportData = null;
+
+    window.onload = function() {
+      loadClinicDropdown();
+      loadDataAvailability();
+    };
+
+    // ==========================================
+    // 2. ฟังก์ชันสลับหน้า Tab
     // ==========================================
     function switchTab(tab) {
       document.getElementById('content-report').classList.add('hidden');
@@ -294,23 +345,17 @@
       document.getElementById(`tab-${tab}`).classList.add('tab-active');
       document.getElementById(`tab-${tab}`).classList.remove('text-gray-500');
 
-      if(tab === 'report') {
+      if (tab === 'report') {
         loadClinicDropdown();
       }
     }
 
     // ==========================================
-    // 2. ตั้งค่า Supabase
+    // 3. ฟังก์ชันจัดการคลินิกและวันที่
     // ==========================================
-    const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8';
-    
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // โหลดรายชื่อคลินิกทั้งหมดใส่ Dropdown อัตโนมัติ
     async function loadClinicDropdown() {
       const clinicSelect = document.getElementById('filter-clinic');
-      if (clinicSelect.options.length > 1) return; // โหลดแค่ครั้งเดียวพอ
+      if (clinicSelect.options.length > 1) return;
 
       const { data, error } = await supabaseClient
         .from('opd_summary')
@@ -327,12 +372,89 @@
       }
     }
 
-    window.onload = function() {
-      loadClinicDropdown();
-    };
+    function toThaiDateDisplay(iso) {
+      if (!iso) return '-';
+      const [y, m, d] = String(iso).slice(0, 10).split('-');
+      const buddhistYear = parseInt(y, 10) + 543;
+      return `${d}/${m}/${buddhistYear}`;
+    }
+
+    function addDaysToISO(iso, days) {
+      const [y, m, d] = iso.split('-').map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      dt.setUTCDate(dt.getUTCDate() + days);
+      const yy = dt.getUTCFullYear();
+      const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(dt.getUTCDate()).padStart(2, '0');
+      return `${yy}-${mm}-${dd}`;
+    }
+
+    async function loadDataAvailability() {
+      const reportBox = document.getElementById('data-availability-report-content');
+      const uploadBox = document.getElementById('data-availability-upload-content');
+
+      reportBox.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบข้อมูลในระบบ...';
+      uploadBox.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบข้อมูลในระบบ...';
+
+      const { data, error } = await supabaseClient
+        .from('opd_summary')
+        .select('regist_date');
+
+      if (error) {
+        const errHtml = `❌ ไม่สามารถตรวจสอบข้อมูลได้: ${error.message}`;
+        reportBox.innerHTML = errHtml;
+        uploadBox.innerHTML = errHtml;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        const emptyHtml = '⚠️ ยังไม่มีข้อมูลในระบบ กรุณาอัปโหลดไฟล์ CSV เพื่อเริ่มต้นใช้งาน';
+        reportBox.innerHTML = emptyHtml;
+        uploadBox.innerHTML = emptyHtml;
+        return;
+      }
+
+      const uniqueDates = [...new Set(data.map(r => String(r.regist_date).slice(0, 10)))].sort();
+      const minDate = uniqueDates[0];
+      const maxDate = uniqueDates[uniqueDates.length - 1];
+      const dateSet = new Set(uniqueDates);
+
+      const missingRanges = [];
+      let cursorIso = minDate;
+      let prevIso = null;
+      let rangeStart = null;
+
+      while (cursorIso <= maxDate) {
+        if (!dateSet.has(cursorIso)) {
+          if (!rangeStart) rangeStart = cursorIso;
+        } else {
+          if (rangeStart) {
+            missingRanges.push([rangeStart, prevIso]);
+            rangeStart = null;
+          }
+        }
+        prevIso = cursorIso;
+        cursorIso = addDaysToISO(cursorIso, 1);
+      }
+      if (rangeStart) missingRanges.push([rangeStart, prevIso]);
+
+      let html = `📅 มีข้อมูลตั้งแต่วันที่ <strong>${toThaiDateDisplay(minDate)}</strong> ถึง <strong>${toThaiDateDisplay(maxDate)}</strong>`;
+
+      if (missingRanges.length > 0) {
+        const rangesText = missingRanges.map(r => {
+          return r[0] === r[1] ? toThaiDateDisplay(r[0]) : `${toThaiDateDisplay(r[0])} - ${toThaiDateDisplay(r[1])}`;
+        }).join(', ');
+        html += `<br>⚠️ <span class="text-red-600 font-semibold">พบวันที่ข้อมูลขาดหายจำนวน ${missingRanges.length} ช่วง:</span> <span class="text-red-600">${rangesText}</span>`;
+      } else {
+        html += `<br>✅ <span class="text-green-600 font-medium">ข้อมูลครบถ้วน ไม่มีวันที่ขาดหายในช่วงนี้</span>`;
+      }
+
+      reportBox.innerHTML = html;
+      uploadBox.innerHTML = html;
+    }
 
     // ==========================================
-    // 3. ฟังก์ชันดูรายงาน (Tab 1)
+    // 4. ฟังก์ชันดูรายงาน (Tab 1)
     // ==========================================
     async function fetchReport() {
       const startDate = document.getElementById('start-date').value;
@@ -340,11 +462,15 @@
       const filterDocCode = document.getElementById('filter-doccode').value.trim();
       const filterClinic = document.getElementById('filter-clinic').value;
       const tbody = document.getElementById('report-table-body');
+      const exportToolbar = document.getElementById('export-toolbar');
 
       if (!startDate || !endDate) {
         alert("กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด");
         return;
       }
+
+      exportToolbar.classList.add('hidden');
+      lastReportData = null;
 
       tbody.innerHTML = `<tr><td colspan="6" class="py-8"><span class="spinner"></span>กำลังค้นหาข้อมูล...</td></tr>`;
 
@@ -354,13 +480,8 @@
         .gte('regist_date', startDate)
         .lte('regist_date', endDate);
 
-      if (filterClinic) {
-        query = query.eq('clinic', filterClinic);
-      }
-
-      if (filterDocCode) {
-        query = query.ilike('doc_code', `%${filterDocCode}%`);
-      }
+      if (filterClinic) query = query.eq('clinic', filterClinic);
+      if (filterDocCode) query = query.ilike('doc_code', `%${filterDocCode}%`);
 
       const { data, error } = await query;
 
@@ -383,7 +504,7 @@
 
       data.forEach(row => {
         const key = `${row.clinic}_${row.doc_code}`;
-        if(!aggMap[key]) {
+        if (!aggMap[key]) {
           aggMap[key] = { clinic: row.clinic, docId: row.doc_code, docName: row.doc_name, total: 0, completed: 0 };
         }
         aggMap[key].total += row.total_cases;
@@ -406,10 +527,9 @@
       let html = '';
       list.forEach((item, idx) => {
         const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
-        let rowClass = pct < 50 
-          ? 'bg-red-50 hover:bg-red-100' 
-          : (idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-slate-50 hover:bg-blue-50');
-        let pctColor = pct < 50 ? 'text-red-600' : (pct >= 90 ? 'text-green-600' : 'text-blue-600');
+        const rowClass = pct < 50 ? 'bg-red-50 hover:bg-red-100' : (idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-slate-50 hover:bg-blue-50');
+        const pctColor = pct < 50 ? 'text-red-600' : (pct >= 90 ? 'text-green-600' : 'text-blue-600');
+        
         html += `
           <tr class="${rowClass}">
             <td class="cell-clinic py-2.5 px-4 text-left font-medium text-gray-700" data-label="คลินิก">${item.clinic}</td>
@@ -422,10 +542,171 @@
         `;
       });
       tbody.innerHTML = html;
+
+      lastReportData = {
+        list, gTotal, gCompleted, percent,
+        startDate, endDate,
+        filterDocCode: filterDocCode || 'ทั้งหมด',
+        filterClinicName: filterClinic || 'ทุกคลินิก'
+      };
+
+      document.getElementById('result-count').innerText = list.length.toLocaleString();
+      exportToolbar.classList.remove('hidden');
     }
 
     // ==========================================
-    // 4. ฟังก์ชันอัปโหลด CSV (Tab 2)
+    // 5. ฟังก์ชัน Export (Excel & PDF)
+    // ==========================================
+    function exportExcel() {
+      if (!lastReportData) {
+        alert('กรุณาค้นหาข้อมูลก่อน Export');
+        return;
+      }
+      const { list, gTotal, gCompleted, percent, startDate, endDate, filterDocCode, filterClinicName } = lastReportData;
+
+      const wsData = [
+        ['ระบบรายงานผลการลงข้อมูลแพทย์'],
+        ['รายงานสรุปผลการลงข้อมูลผู้ป่วยรายแพทย์'],
+        [`ช่วงวันที่: ${toThaiDateDisplay(startDate)} - ${toThaiDateDisplay(endDate)}`],
+        [`คลินิก: ${filterClinicName}    เลข ว. แพทย์: ${filterDocCode}`],
+        [`วันที่ออกรายงาน: ${new Date().toLocaleString('th-TH')}`],
+        [],
+        ['คลินิก', 'เลข ว.', 'ชื่อแพทย์', 'รวม (เคส)', 'เสร็จ (เคส)', '% ความสำเร็จ']
+      ];
+
+      list.forEach(item => {
+        const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
+        wsData.push([item.clinic, item.docId, item.docName, item.total, item.completed, `${pct}%`]);
+      });
+
+      wsData.push([], ['รวมทั้งหมด', '', '', gTotal, gCompleted, `${percent}%`]);
+      wsData.push([], ['ผู้จัดทำ: ณฐพล มูลศาสตร์ | นักวิชาการคอมพิวเตอร์ กลุ่มงานสุขภาพดิจิทัล']);
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [{ wch: 28 }, { wch: 12 }, { wch: 28 }, { wch: 12 }, { wch: 12 }, { wch: 14 }];
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'รายงาน');
+      XLSX.writeFile(wb, `รายงานลงข้อมูลแพทย์_${startDate}_ถึง_${endDate}.xlsx`);
+    }
+
+    async function exportPDF() {
+      if (!lastReportData) {
+        alert('กรุณาค้นหาข้อมูลก่อน Export');
+        return;
+      }
+      const { list, gTotal, gCompleted, percent, startDate, endDate, filterDocCode, filterClinicName } = lastReportData;
+
+      let rowsHtml = '';
+      list.forEach(item => {
+        const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
+        rowsHtml += `<tr>
+          <td style="padding:6px 8px;border:1px solid #ccc;text-align:left;">${item.clinic}</td>
+          <td style="padding:6px 8px;border:1px solid #ccc;text-align:center;">${item.docId}</td>
+          <td style="padding:6px 8px;border:1px solid #ccc;text-align:left;">${item.docName}</td>
+          <td style="padding:6px 8px;border:1px solid #ccc;text-align:right;">${item.total.toLocaleString()}</td>
+          <td style="padding:6px 8px;border:1px solid #ccc;text-align:right;">${item.completed.toLocaleString()}</td>
+          <td style="padding:6px 8px;border:1px solid #ccc;text-align:right;">${pct}%</td>
+        </tr>`;
+      });
+
+      const printArea = document.createElement('div');
+      printArea.id = 'pdf-render-area';
+      printArea.style.cssText = 'position:fixed; top:-9999px; left:-9999px; width:1000px; background:#fff; padding:30px; font-family:Kanit, sans-serif; color:#111;';
+      printArea.innerHTML = `
+        <div style="text-align:center; margin-bottom:16px; border-bottom:3px solid #2563eb; padding-bottom:12px;">
+          <h2 style="margin:0; color:#1e3a8a; font-size:22px;">🏥 ระบบรายงานผลการลงข้อมูลแพทย์</h2>
+          <p style="margin:4px 0 0; color:#555; font-size:14px;">รายงานสรุปผลการลงข้อมูลผู้ป่วยรายแพทย์</p>
+        </div>
+        <table style="width:100%; margin-bottom:16px; font-size:14px; border-collapse:collapse;">
+          <tr>
+            <td style="padding:4px 0;"><strong>ช่วงวันที่:</strong> ${toThaiDateDisplay(startDate)} - ${toThaiDateDisplay(endDate)}</td>
+            <td style="padding:4px 0;"><strong>วันที่ออกรายงาน:</strong> ${new Date().toLocaleString('th-TH')}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;"><strong>คลินิก:</strong> ${filterClinicName}</td>
+            <td style="padding:4px 0;"><strong>เลข ว. แพทย์:</strong> ${filterDocCode}</td>
+          </tr>
+        </table>
+        <div style="display:flex; gap:12px; margin-bottom:18px;">
+          <div style="flex:1; text-align:center; background:#eff6ff; padding:12px; border-radius:8px; border:1px solid #bfdbfe;">
+            <div style="font-size:12px;color:#1e40af;">เคสตรวจทั้งหมด</div>
+            <div style="font-size:22px;font-weight:bold;color:#1e3a8a;">${gTotal.toLocaleString()}</div>
+          </div>
+          <div style="flex:1; text-align:center; background:#f0fdf4; padding:12px; border-radius:8px; border:1px solid #bbf7d0;">
+            <div style="font-size:12px;color:#15803d;">ลงข้อมูลแล้ว</div>
+            <div style="font-size:22px;font-weight:bold;color:#166534;">${gCompleted.toLocaleString()}</div>
+          </div>
+          <div style="flex:1; text-align:center; background:#faf5ff; padding:12px; border-radius:8px; border:1px solid #e9d5ff;">
+            <div style="font-size:12px;color:#7e22ce;">อัตราความสำเร็จ</div>
+            <div style="font-size:22px;font-weight:bold;color:#581c87;">${percent}%</div>
+          </div>
+        </div>
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+          <thead>
+            <tr style="background:#334155; color:#fff;">
+              <th style="padding:8px;border:1px solid #ccc;text-align:left;">คลินิก</th>
+              <th style="padding:8px;border:1px solid #ccc;">เลข ว.</th>
+              <th style="padding:8px;border:1px solid #ccc;text-align:left;">ชื่อแพทย์</th>
+              <th style="padding:8px;border:1px solid #ccc;">รวม (เคส)</th>
+              <th style="padding:8px;border:1px solid #ccc;">เสร็จ (เคส)</th>
+              <th style="padding:8px;border:1px solid #ccc;">% ความสำเร็จ</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+          <tfoot>
+            <tr style="background:#f1f5f9; font-weight:bold;">
+              <td style="padding:8px;border:1px solid #ccc;" colspan="3">รวมทั้งหมด</td>
+              <td style="padding:8px;border:1px solid #ccc;text-align:right;">${gTotal.toLocaleString()}</td>
+              <td style="padding:8px;border:1px solid #ccc;text-align:right;">${gCompleted.toLocaleString()}</td>
+              <td style="padding:8px;border:1px solid #ccc;text-align:right;">${percent}%</td>
+            </tr>
+          </tfoot>
+        </table>
+        <div style="margin-top:26px; font-size:12px; color:#666; border-top:1px solid #ddd; padding-top:10px; text-align:center;">
+          <p>ผู้จัดทำ: <strong>ณฐพล มูลศาสตร์</strong> &nbsp;|&nbsp; นักวิชาการคอมพิวเตอร์ กลุ่มงานสุขภาพดิจิทัล</p>
+        </div>
+      `;
+      document.body.appendChild(printArea);
+
+      try {
+        const canvas = await html2canvas(printArea, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        let heightLeft = pdfHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 0) {
+          position = heightLeft - pdfHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+          heightLeft -= pageHeight;
+        }
+
+        pdf.save(`รายงานลงข้อมูลแพทย์_${startDate}_ถึง_${endDate}.pdf`);
+      } catch (err) {
+        console.error(err);
+        alert('เกิดข้อผิดพลาดในการสร้างไฟล์ PDF กรุณาลองใหม่อีกครั้ง');
+      } finally {
+        document.body.removeChild(printArea);
+      }
+    }
+
+    // ==========================================
+    // 6. ฟังก์ชันอัปโหลด CSV (Tab 2)
     // ==========================================
     function updateFileName() {
       const fileInput = document.getElementById('csv-file');
@@ -442,13 +723,13 @@
     }
 
     function parseThaiDateToISO(thaiDateStr) {
-      if(!thaiDateStr) return null;
+      if (!thaiDateStr) return null;
       let parts = thaiDateStr.split('/');
-      if(parts.length === 3) {
+      if (parts.length === 3) {
         let d = parts[0].padStart(2, '0');
         let m = parts[1].padStart(2, '0');
         let y = parseInt(parts[2], 10);
-        if(y > 2500) y -= 543;
+        if (y > 2500) y -= 543;
         return `${y}-${m}-${d}`;
       }
       return null;
@@ -482,7 +763,7 @@
             let completedCases = parseInt(row['จำนวนเคสที่ลงข้อมูลแล้ว'], 10) || 0;
 
             let dateISO = parseThaiDateToISO(dateStr);
-            if(!dateISO) continue;
+            if (!dateISO) continue;
 
             dataToInsert.push({
               regist_date: dateISO,
@@ -525,6 +806,7 @@
             document.getElementById('csv-file').value = ""; 
             updateFileName();
             loadClinicDropdown();
+            loadDataAvailability();
           }
         }
       });
