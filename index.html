@@ -79,7 +79,7 @@
     <div id="content-upload" class="hidden">
       <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
         <p class="text-sm text-yellow-700">
-          <strong>คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server ออกมาเป็นไฟล์ <code>.csv</code> (ต้องมีบรรทัดหัวคอลัมน์) จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะทำการสรุปข้อมูลและส่งขึ้นฐานข้อมูลให้อัตโนมัติ
+          <strong>คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code>.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ
         </p>
       </div>
 
@@ -91,7 +91,7 @@
         <p id="file-name" class="text-gray-600 text-sm mb-4">ยังไม่ได้เลือกไฟล์</p>
         
         <button onclick="processAndUploadCSV()" id="upload-btn" class="bg-green-600 text-white font-bold py-2 px-6 rounded hover:bg-green-700 hidden">
-          🚀 เริ่มประมวลผลและอัปโหลด
+          🚀 เริ่มอัปโหลดเข้าฐานข้อมูล
         </button>
       </div>
 
@@ -102,10 +102,12 @@
 
   <script>
     // ==========================================
-    // ⚙️ ตั้งค่า Supabase (เอามาจาก Project Settings -> API)
+    // ⚙️ ตั้งค่า Supabase (มีเครื่องหมายคำพูดเดี่ยวครอบแล้ว)
     // ==========================================
-    const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';   // เปลี่ยนตรงนี้
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8' ; // เปลี่ยนตรงนี้
+    const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8';
+    
+    // ประกาศตัวแปรเชื่อมต่อ
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ==========================================
@@ -139,7 +141,6 @@
 
       tbody.innerHTML = '<tr><td colspan="6" class="py-4">⏳ กำลังโหลดข้อมูล...</td></tr>';
 
-      // ดึงข้อมูลแบบสรุปรวม (Group By Clinic, Doc_code, Doc_name) ด้วย Supabase RPC หรือดึงมาบวกใน JS
       const { data, error } = await supabase
         .from('opd_summary')
         .select('*')
@@ -159,7 +160,6 @@
         return;
       }
 
-      // นำข้อมูลของหลายวันมารวมกัน (กรณีเลือกเป็นช่วงวันที่)
       const aggMap = {};
       let gTotal = 0;
       let gCompleted = 0;
@@ -181,13 +181,11 @@
         return b.completed - a.completed;
       });
 
-      // แสดงผลตัวเลขรวม
       document.getElementById('sum-total').innerText = gTotal.toLocaleString();
       document.getElementById('sum-completed').innerText = gCompleted.toLocaleString();
       const percent = gTotal > 0 ? ((gCompleted / gTotal) * 100).toFixed(1) : '0.0';
       document.getElementById('sum-percent').innerText = `${percent}%`;
 
-      // วาดตาราง
       let html = '';
       list.forEach(item => {
         const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
@@ -223,7 +221,6 @@
       }
     }
 
-    // แปลง พ.ศ. (DD/MM/YYYY) เป็น ISO Date (YYYY-MM-DD)
     function parseThaiDateToISO(thaiDateStr) {
       if(!thaiDateStr) return null;
       let parts = thaiDateStr.split('/');
@@ -245,64 +242,44 @@
       const statusDiv = document.getElementById('upload-status');
       statusDiv.classList.remove('hidden', 'text-green-600', 'text-red-600');
       statusDiv.classList.add('text-blue-600');
-      statusDiv.innerText = '⏳ กำลังอ่านและประมวลผลไฟล์ (อาจใช้เวลาสักครู่)...';
+      statusDiv.innerText = '⏳ กำลังอ่านและอัปโหลดข้อมูล...';
 
-      // ใช้ PapaParse อ่านไฟล์ CSV
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         complete: async function(results) {
           const rows = results.data;
-          statusDiv.innerText = `⏳ อ่านสำเร็จ ${rows.length.toLocaleString()} บรรทัด กำลังสรุปข้อมูล...`;
+          statusDiv.innerText = `⏳ อ่านสำเร็จ ${rows.length.toLocaleString()} แถว กำลังส่งขึ้นฐานข้อมูล...`;
 
-          // สรุปยอดข้อมูล
-          const summaryMap = {};
+          const dataToInsert = [];
           
           for (let row of rows) {
-            // อิงตามชื่อคอลัมน์จากการ Query SQL
+            // ดึงชื่อคอลัมน์ให้ตรงกับที่ตั้ง Alias ไว้ใน SQL Query ล่าสุด
             let dateStr = row['RegistDate'];
-            let clinic = row['แผนกที่แพทย์ตรวจ'] || 'ไม่ระบุแผนก';
-            let docCode = row['DocCode'] || '';
-            let docName = row['แพทย์'] || '';
-            let diag = (row['D_DiagNote'] || '').trim();
-            let note = (row['D_NoteToNurse'] || '').trim();
+            let clinic = row['คลินิก (qName)'] || 'ไม่ระบุแผนก';
+            let docCode = row['เลข ว.'] || '';
+            let docName = row['ชื่อแพทย์'] || '';
+            let totalCases = parseInt(row['จำนวนเคสตรวจทั้งหมด'], 10) || 0;
+            let completedCases = parseInt(row['จำนวนเคสที่ลงข้อมูลแล้ว'], 10) || 0;
 
             let dateISO = parseThaiDateToISO(dateStr);
             if(!dateISO) continue;
-            if(!docCode && !docName) continue;
 
-            let key = `${dateISO}_${clinic}_${docCode}_${docName}`;
-            
-            if(!summaryMap[key]) {
-              summaryMap[key] = {
-                regist_date: dateISO,
-                clinic: clinic,
-                doc_code: docCode,
-                doc_name: docName,
-                total_cases: 0,
-                completed_cases: 0
-              };
-            }
-
-            summaryMap[key].total_cases += 1;
-
-            let isDiagEmpty = (diag === '' || diag.toUpperCase() === 'NULL');
-            let isNoteEmpty = (note === '' || note.toUpperCase() === 'NULL');
-            if (!(isDiagEmpty && isNoteEmpty)) {
-              summaryMap[key].completed_cases += 1;
-            }
+            dataToInsert.push({
+              regist_date: dateISO,
+              clinic: clinic,
+              doc_code: docCode,
+              doc_name: docName,
+              total_cases: totalCases,
+              completed_cases: completedCases
+            });
           }
 
-          const dataToInsert = Object.values(summaryMap);
-          statusDiv.innerText = `⏳ สรุปข้อมูลได้ ${dataToInsert.length} รายการ... กำลังส่งขึ้นฐานข้อมูล...`;
-
-          // ทยอยอัปโหลดทีละ 1000 รายการ ป้องกันการ Timeout
           const batchSize = 1000;
           let hasError = false;
 
           for (let i = 0; i < dataToInsert.length; i += batchSize) {
             const batch = dataToInsert.slice(i, i + batchSize);
-            // .upsert() จะเพิ่มข้อมูลใหม่ และอัปเดตข้อมูลเดิมหากพบวันที่+คลินิก+แพทย์ซ้ำ
             const { error } = await supabase
               .from('opd_summary')
               .upsert(batch, { onConflict: 'regist_date, clinic, doc_code, doc_name' });
@@ -316,7 +293,7 @@
 
           if (hasError) {
             statusDiv.classList.replace('text-blue-600', 'text-red-600');
-            statusDiv.innerText = '❌ เกิดข้อผิดพลาดในการส่งข้อมูลขึ้นฐานข้อมูล ดูรายละเอียดใน Console';
+            statusDiv.innerText = '❌ เกิดข้อผิดพลาดในการส่งข้อมูลขึ้นฐานข้อมูล กด F12 ดูรายละเอียดใน Console';
           } else {
             statusDiv.classList.replace('text-blue-600', 'text-green-600');
             statusDiv.innerText = `✅ อัปโหลดและอัปเดตข้อมูลสำเร็จเรียบร้อย!`;
