@@ -487,9 +487,15 @@
       let gCompleted = 0;
 
       data.forEach(row => {
-        const key = `${row.clinic}_${row.doc_code}`;
-        if (!aggMap[key]) {
-          aggMap[key] = { clinic: row.clinic, docId: row.doc_code, docName: row.doc_name, total: 0, completed: 0 };
+       const key = `${row.regist_date}_${row.clinic}_${row.doc_code}`;
+       if (!aggMap[key]) {
+          aggMap[key] = { 
+            registDate: row.regist_date, // ⭐️ เพิ่มบรรทัดนี้
+            clinic: row.clinic, 
+            docId: row.doc_code, 
+            docName: row.doc_name
+           
+          };
         }
         aggMap[key].total += row.total_cases;
         aggMap[key].completed += row.completed_cases;
@@ -498,7 +504,8 @@
       });
 
       const list = Object.values(aggMap);
-      list.sort((a, b) => {
+     list.sort((a, b) => {
+        if (a.registDate !== b.registDate) return b.registDate.localeCompare(a.registDate);
         if (a.clinic !== b.clinic) return a.clinic.localeCompare(b.clinic);
         return b.completed - a.completed;
       });
