@@ -441,14 +441,15 @@
       }
 
       // ⭐️ รวมกลุ่มข้อมูลรายแพทย์ตลอดช่วงวันที่เลือก (Group by Clinic + Doc Code)
-      const aggMap = {};
-      let gTotal = 0;
-      let gCompleted = 0;
+  const aggMap = {};
 
       data.forEach(row => {
-        const key = `${row.clinic}_${row.doc_code}`;
+        // ⭐️ ใช้ วันที่ + คลินิก + รหัสแพทย์ เป็น Key เพื่อให้มั่นใจว่าข้อมูลแต่ละวันไม่ตกหล่นและไม่ตีกัน
+        const key = `${row.regist_date}_${row.clinic}_${row.doc_code}`;
+
         if (!aggMap[key]) {
           aggMap[key] = { 
+            registDate: row.regist_date,
             clinic: row.clinic, 
             docId: row.doc_code, 
             docName: row.doc_name, 
@@ -460,11 +461,25 @@
         aggMap[key].completed += Number(row.completed_cases) || 0;
       });
 
-      const list = Object.values(aggMap);
-      list.forEach(item => {
-        gTotal += item.total;
-        gCompleted += item.completed;
+      // หลังจากได้ข้อมูลรายวันแยกตามคลินิกและแพทย์แล้ว 
+      // ถ้าไม่ได้กรอกเลข ว. (ดูภาพรวม) ให้ทำการ "ยุบรวมยอดตามคลินิกและแพทย์ท่านนั้นตลอดช่วงวันที่เลือกอีกรอบ" เพื่อให้ยอดรวมทั้งเดือนแสดงผลถูกต้องแม่นยำครับ
+      const finalMap = {};
+      Object.values(aggMap).forEach(item => {
+        const finalKey = `${item.clinic}_${item.docId}`;
+        if (!finalMap[finalKey]) {
+          finalMap[finalKey] = {
+            clinic: item.clinic,
+            docId: item.docId,
+            docName: item.docName,
+            total: 0,
+            completed: 0
+          };
+        }
+        finalMap[finalKey].total += item.total;
+        finalMap[finalKey].completed += item.completed;
       });
+
+      const list = Object.values(finalMap);
 
       // จัดเรียงตามคลินิก และเคสเสร็จจากมากไปน้อย
       list.sort((a, b) => {
