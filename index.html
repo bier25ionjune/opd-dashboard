@@ -204,7 +204,7 @@
           </div>
           <div class="col-span-1">
             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. แพทย์</label>
-            <input type="text" id="filter-doccode" placeholder="เช่น 27447" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+            <input type="text" id="filter-doccode" placeholder="เว้นว่างเพื่อดูรวมทั้ง รพ." class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
           </div>
           <div class="col-span-1">
             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 เลือกคลินิก</label>
@@ -399,7 +399,7 @@
     }
 
     // ==========================================
-    // ฟังก์ชันดูรายงาน (แก้ไขการรวมกลุ่มข้อมูลให้ถูกต้องแม่นยำ)
+    // ฟังก์ชันดูรายงาน (รองรับการดูภาพรวมทั้ง รพ. เมื่อไม่ระบุเลข ว.)
     // ==========================================
     async function fetchReport() {
       const startDate = document.getElementById('start-date').value;
@@ -442,19 +442,20 @@
         return;
       }
 
-      // รวมกลุ่มข้อมูลรายแพทย์แบบสะสมยอดรวมในช่วงวันที่เลือก (Group by Clinic + Doc Code)
       const aggMap = {};
       let gTotal = 0;
       let gCompleted = 0;
 
       data.forEach(row => {
-        // ใช้ คลินิก + รหัสแพทย์ เป็น Key เพื่อรวมยอดผลงานของแพทย์ท่านนั้นตลอดช่วงวันที่ค้นหา
-        const key = `${row.clinic}_${row.doc_code}`;
+        // ⭐️ หัวใจสำคัญ: ถ้าปล่อยช่อง เลข ว. เป็นค่าว่าง ให้ยุบรวมยอดแยกตามคลินิก (รวมทั้ง รพ.)
+        // แต่ถ้าระบุ เลข ว. ให้แยกแสดงผลรายแพทย์เป็นรายบุคคล
+        const key = filterDocCode ? `${row.clinic}_${row.doc_code}` : row.clinic;
+
         if (!aggMap[key]) {
           aggMap[key] = { 
             clinic: row.clinic, 
-            docId: row.doc_code, 
-            docName: row.doc_name, 
+            docId: filterDocCode ? row.doc_code : 'ภาพรวม', 
+            docName: filterDocCode ? row.doc_name : 'ทุกแพทย์ (รวมทั้งคลินิก)', 
             total: 0, 
             completed: 0 
           };
@@ -469,7 +470,7 @@
         gCompleted += item.completed;
       });
 
-      // จัดเรียงตามคลินิก และตามด้วยจำนวนเคสที่เสร็จจากมากไปน้อย
+      // จัดเรียงตามคลินิก และเคสเสร็จจากมากไปน้อย
       list.sort((a, b) => {
         if (a.clinic !== b.clinic) return a.clinic.localeCompare(b.clinic);
         return b.completed - a.completed;
@@ -489,7 +490,7 @@
         html += `
           <tr class="${rowClass}">
             <td class="cell-clinic py-2.5 px-4 text-left font-medium text-gray-700" data-label="คลินิก">${item.clinic}</td>
-            <td class="py-2.5 px-4" data-label="เลข ว.">${item.docId}</td>
+            <td class="py-2.5 px-4 font-semibold text-gray-500" data-label="เลข ว.">${item.docId}</td>
             <td class="py-2.5 px-4 text-left" data-label="ชื่อแพทย์">${item.docName}</td>
             <td class="py-2.5 px-4 text-right" data-label="รวม (เคส)">${item.total.toLocaleString()}</td>
             <td class="py-2.5 px-4 text-right text-green-600 font-medium" data-label="เสร็จ (เคส)">${item.completed.toLocaleString()}</td>
@@ -502,7 +503,7 @@
       lastReportData = {
         list, gTotal, gCompleted, percent,
         startDate, endDate,
-        filterDocCode: filterDocCode || 'ทั้งหมด',
+        filterDocCode: filterDocCode || 'ทั้งหมด (ภาพรวม รพ.)',
         filterClinicName: filterClinic || 'ทุกคลินิก'
       };
 
