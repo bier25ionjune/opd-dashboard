@@ -204,7 +204,7 @@
           </div>
           <div class="col-span-1">
             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. แพทย์</label>
-            <input type="text" id="filter-doccode" placeholder="เว้นว่างเพื่อดูรวมทั้ง รพ." class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
+            <input type="text" id="filter-doccode" placeholder="เช่น 27447" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
           </div>
           <div class="col-span-1">
             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 เลือกคลินิก</label>
@@ -276,7 +276,6 @@
 
       <!-- TAB 2: อัปโหลดข้อมูล -->
       <div id="content-upload" class="hidden fade-in">
-        <!-- แผงแสดงสถานะข้อมูลในระบบ -->
         <div id="data-availability-upload" class="mb-4 sm:mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-indigo-900 flex items-start gap-2">
           <span class="text-base sm:text-lg leading-none">ℹ️</span>
           <div id="data-availability-upload-content" class="leading-relaxed">กำลังตรวจสอบข้อมูลในระบบ...</div>
@@ -284,7 +283,7 @@
 
         <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-5 sm:mb-6 rounded-r-lg shadow-sm">
           <p class="text-xs sm:text-sm text-yellow-800">
-            <strong>💡 คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code class="bg-yellow-100 px-1.5 py-0.5 rounded">.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ หากเคยอัปโหลดช่วงเวลานั้นไปแล้ว ระบบจะใช้วิธีอัปเดตทับข้อมูลเดิมให้ทันที
+            <strong>💡 คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code class="bg-yellow-100 px-1.5 py-0.5 rounded">.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ
           </p>
         </div>
 
@@ -306,7 +305,6 @@
 
     </div>
 
-    <!-- ผู้จัดทำ -->
     <div class="text-center text-[11px] sm:text-xs text-gray-400 mt-5 pb-2">
       <p>พัฒนาโดย <span class="font-semibold text-gray-500">ณฐพล มูลศาสตร์</span> — นักวิชาการคอมพิวเตอร์ กลุ่มงานสุขภาพดิจิทัล</p>
     </div>
@@ -399,7 +397,7 @@
     }
 
     // ==========================================
-    // ฟังก์ชันดูรายงาน (รองรับการดูภาพรวมทั้ง รพ. เมื่อไม่ระบุเลข ว.)
+    // ฟังก์ชันดูรายงาน (รวมยอดสะสมรายแพทย์ตลอดช่วงเวลาที่เลือก)
     // ==========================================
     async function fetchReport() {
       const startDate = document.getElementById('start-date').value;
@@ -442,20 +440,18 @@
         return;
       }
 
+      // ⭐️ รวมกลุ่มข้อมูลรายแพทย์ตลอดช่วงวันที่เลือก (Group by Clinic + Doc Code)
       const aggMap = {};
       let gTotal = 0;
       let gCompleted = 0;
 
       data.forEach(row => {
-        // ⭐️ หัวใจสำคัญ: ถ้าปล่อยช่อง เลข ว. เป็นค่าว่าง ให้ยุบรวมยอดแยกตามคลินิก (รวมทั้ง รพ.)
-        // แต่ถ้าระบุ เลข ว. ให้แยกแสดงผลรายแพทย์เป็นรายบุคคล
-        const key = filterDocCode ? `${row.clinic}_${row.doc_code}` : row.clinic;
-
+        const key = `${row.clinic}_${row.doc_code}`;
         if (!aggMap[key]) {
           aggMap[key] = { 
             clinic: row.clinic, 
-            docId: filterDocCode ? row.doc_code : 'ภาพรวม', 
-            docName: filterDocCode ? row.doc_name : 'ทุกแพทย์ (รวมทั้งคลินิก)', 
+            docId: row.doc_code, 
+            docName: row.doc_name, 
             total: 0, 
             completed: 0 
           };
@@ -490,7 +486,7 @@
         html += `
           <tr class="${rowClass}">
             <td class="cell-clinic py-2.5 px-4 text-left font-medium text-gray-700" data-label="คลินิก">${item.clinic}</td>
-            <td class="py-2.5 px-4 font-semibold text-gray-500" data-label="เลข ว.">${item.docId}</td>
+            <td class="py-2.5 px-4" data-label="เลข ว.">${item.docId}</td>
             <td class="py-2.5 px-4 text-left" data-label="ชื่อแพทย์">${item.docName}</td>
             <td class="py-2.5 px-4 text-right" data-label="รวม (เคส)">${item.total.toLocaleString()}</td>
             <td class="py-2.5 px-4 text-right text-green-600 font-medium" data-label="เสร็จ (เคส)">${item.completed.toLocaleString()}</td>
@@ -503,7 +499,7 @@
       lastReportData = {
         list, gTotal, gCompleted, percent,
         startDate, endDate,
-        filterDocCode: filterDocCode || 'ทั้งหมด (ภาพรวม รพ.)',
+        filterDocCode: filterDocCode || 'ทั้งหมด',
         filterClinicName: filterClinic || 'ทุกคลินิก'
       };
 
