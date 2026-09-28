@@ -99,10 +99,8 @@
     .fade-in { animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
 
-    /* ป้องกัน iOS ซูมอัตโนมัติเมื่อแตะ input/select */
     input, select, textarea, button { font-size: 16px; }
 
-    /* Responsive Table -> Card view บนจอมือถือ */
     @media (max-width: 767px) {
       #report-table-body td[colspan] {
         display: block;
@@ -286,7 +284,7 @@
 
         <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-5 sm:mb-6 rounded-r-lg shadow-sm">
           <p class="text-xs sm:text-sm text-yellow-800">
-            <strong>💡 คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code class="bg-yellow-100 px-1.5 py-0.5 rounded">.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ ตรวจสอบด้านบนก่อนว่าข้อมูลวันที่ใดขาดหายไปบ้าง เพื่ออัปโหลดย้อนหลังให้ครบถ้วน
+            <strong>💡 คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code class="bg-yellow-100 px-1.5 py-0.5 rounded">.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ หากเคยอัปโหลดช่วงเวลานั้นไปแล้ว ระบบจะใช้วิธีอัปเดตทับข้อมูลเดิมให้ทันที
           </p>
         </div>
 
@@ -315,9 +313,6 @@
   </div>
 
   <script>
-    // ==========================================
-    // 1. ตั้งค่า Supabase & ตัวแปรหลัก
-    // ==========================================
     const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8';
     
@@ -329,9 +324,6 @@
       loadDataAvailability();
     };
 
-    // ==========================================
-    // 2. ฟังก์ชันสลับหน้า Tab
-    // ==========================================
     function switchTab(tab) {
       document.getElementById('content-report').classList.add('hidden');
       document.getElementById('content-upload').classList.add('hidden');
@@ -350,12 +342,9 @@
       }
     }
 
-    // ==========================================
-    // 3. ฟังก์ชันจัดการคลินิกและวันที่
-    // ==========================================
     async function loadClinicDropdown() {
       const clinicSelect = document.getElementById('filter-clinic');
-      if (clinicSelect.options.length > 1) return;
+      clinicSelect.innerHTML = '<option value="">-- ทุกคลินิก --</option>';
 
       const { data, error } = await supabaseClient
         .from('opd_summary')
@@ -379,16 +368,6 @@
       return `${d}/${m}/${buddhistYear}`;
     }
 
-    function addDaysToISO(iso, days) {
-      const [y, m, d] = iso.split('-').map(Number);
-      const dt = new Date(Date.UTC(y, m - 1, d));
-      dt.setUTCDate(dt.getUTCDate() + days);
-      const yy = dt.getUTCFullYear();
-      const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
-      const dd = String(dt.getUTCDate()).padStart(2, '0');
-      return `${yy}-${mm}-${dd}`;
-    }
-
     async function loadDataAvailability() {
       const reportBox = document.getElementById('data-availability-report-content');
       const uploadBox = document.getElementById('data-availability-upload-content');
@@ -397,23 +376,8 @@
       uploadBox.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบข้อมูลในระบบ...';
 
       try {
-        // 1. ดึงวันที่เก่าสุด (Min Date) โดยเรียงจากน้อยไปมากแล้วจำกัดแค่ 1 แถว
-        const { data: minData, error: minError } = await supabaseClient
-          .from('opd_summary')
-          .select('regist_date')
-          .order('regist_date', { ascending: true })
-          .limit(1);
-
-        // 2. ดึงวันที่ล่าสุด (Max Date) โดยเรียงจากมากไปน้อยแล้วจำกัดแค่ 1 แถว
-        const { data: maxData, error: maxError } = await supabaseClient
-          .from('opd_summary')
-          .select('regist_date')
-          .order('regist_date', { ascending: false })
-          .limit(1);
-
-        if (minError || maxError) {
-          throw new Error(minError?.message || maxError?.message);
-        }
+        const { data: minData } = await supabaseClient.from('opd_summary').select('regist_date').order('regist_date', { ascending: true }).limit(1);
+        const { data: maxData } = await supabaseClient.from('opd_summary').select('regist_date').order('regist_date', { ascending: false }).limit(1);
 
         if (!minData || minData.length === 0 || !maxData || maxData.length === 0) {
           const emptyHtml = '⚠️ ยังไม่มีข้อมูลในระบบ กรุณาอัปโหลดไฟล์ CSV เพื่อเริ่มต้นใช้งาน';
@@ -424,21 +388,18 @@
 
         const minDate = String(minData[0].regist_date).slice(0, 10);
         const maxDate = String(maxData[0].regist_date).slice(0, 10);
-
         const html = `📅 มีข้อมูลในระบบตั้งแต่วันที่ <strong>${toThaiDateDisplay(minDate)}</strong> ถึง <strong>${toThaiDateDisplay(maxDate)}</strong>`;
 
         reportBox.innerHTML = html;
         uploadBox.innerHTML = html;
-
       } catch (err) {
-        const errHtml = `❌ ไม่สามารถตรวจสอบข้อมูลได้: ${err.message}`;
-        reportBox.innerHTML = errHtml;
-        uploadBox.innerHTML = errHtml;
+        reportBox.innerHTML = `❌ ไม่สามารถตรวจสอบข้อมูลได้`;
+        uploadBox.innerHTML = `❌ ไม่สามารถตรวจสอบข้อมูลได้`;
       }
     }
 
     // ==========================================
-    // 4. ฟังก์ชันดูรายงาน (Tab 1)
+    // ฟังก์ชันดูรายงาน (แก้ไขการรวมกลุ่มข้อมูลให้ถูกต้องแม่นยำ)
     // ==========================================
     async function fetchReport() {
       const startDate = document.getElementById('start-date').value;
@@ -455,7 +416,6 @@
 
       exportToolbar.classList.add('hidden');
       lastReportData = null;
-
       tbody.innerHTML = `<tr><td colspan="6" class="py-8"><span class="spinner"></span>กำลังค้นหาข้อมูล...</td></tr>`;
 
       let query = supabaseClient
@@ -474,7 +434,7 @@
         return;
       }
 
-      if (data.length === 0) {
+      if (!data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-gray-500">❌ ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา</td></tr>';
         document.getElementById('sum-total').innerText = '0';
         document.getElementById('sum-completed').innerText = '0';
@@ -482,22 +442,34 @@
         return;
       }
 
+      // รวมกลุ่มข้อมูลรายแพทย์แบบสะสมยอดรวมในช่วงวันที่เลือก (Group by Clinic + Doc Code)
       const aggMap = {};
       let gTotal = 0;
       let gCompleted = 0;
 
       data.forEach(row => {
+        // ใช้ คลินิก + รหัสแพทย์ เป็น Key เพื่อรวมยอดผลงานของแพทย์ท่านนั้นตลอดช่วงวันที่ค้นหา
         const key = `${row.clinic}_${row.doc_code}`;
         if (!aggMap[key]) {
-          aggMap[key] = { clinic: row.clinic, docId: row.doc_code, docName: row.doc_name, total: 0, completed: 0 };
+          aggMap[key] = { 
+            clinic: row.clinic, 
+            docId: row.doc_code, 
+            docName: row.doc_name, 
+            total: 0, 
+            completed: 0 
+          };
         }
-        aggMap[key].total += row.total_cases;
-        aggMap[key].completed += row.completed_cases;
-        gTotal += row.total_cases;
-        gCompleted += row.completed_cases;
+        aggMap[key].total += Number(row.total_cases) || 0;
+        aggMap[key].completed += Number(row.completed_cases) || 0;
       });
 
       const list = Object.values(aggMap);
+      list.forEach(item => {
+        gTotal += item.total;
+        gCompleted += item.completed;
+      });
+
+      // จัดเรียงตามคลินิก และตามด้วยจำนวนเคสที่เสร็จจากมากไปน้อย
       list.sort((a, b) => {
         if (a.clinic !== b.clinic) return a.clinic.localeCompare(b.clinic);
         return b.completed - a.completed;
@@ -538,22 +510,13 @@
       exportToolbar.classList.remove('hidden');
     }
 
-    // ==========================================
-    // 5. ฟังก์ชัน Export (Excel & PDF)
-    // ==========================================
     function exportExcel() {
-      if (!lastReportData) {
-        alert('กรุณาค้นหาข้อมูลก่อน Export');
-        return;
-      }
+      if (!lastReportData) return alert('กรุณาค้นหาข้อมูลก่อน Export');
       const { list, gTotal, gCompleted, percent, startDate, endDate, filterDocCode, filterClinicName } = lastReportData;
 
       const wsData = [
         ['ระบบรายงานผลการลงข้อมูลแพทย์'],
-        ['รายงานสรุปผลการลงข้อมูลผู้ป่วยรายแพทย์'],
         [`ช่วงวันที่: ${toThaiDateDisplay(startDate)} - ${toThaiDateDisplay(endDate)}`],
-        [`คลินิก: ${filterClinicName}    เลข ว. แพทย์: ${filterDocCode}`],
-        [`วันที่ออกรายงาน: ${new Date().toLocaleString('th-TH')}`],
         [],
         ['คลินิก', 'เลข ว.', 'ชื่อแพทย์', 'รวม (เคส)', 'เสร็จ (เคส)', '% ความสำเร็จ']
       ];
@@ -564,25 +527,15 @@
       });
 
       wsData.push([], ['รวมทั้งหมด', '', '', gTotal, gCompleted, `${percent}%`]);
-      wsData.push([], ['ผู้จัดทำ: ณฐพล มูลศาสตร์ | นักวิชาการคอมพิวเตอร์ กลุ่มงานสุขภาพดิจิทัล']);
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [{ wch: 28 }, { wch: 12 }, { wch: 28 }, { wch: 12 }, { wch: 12 }, { wch: 14 }];
-      ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }
-      ];
-
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'รายงาน');
       XLSX.writeFile(wb, `รายงานลงข้อมูลแพทย์_${startDate}_ถึง_${endDate}.xlsx`);
     }
 
     async function exportPDF() {
-      if (!lastReportData) {
-        alert('กรุณาค้นหาข้อมูลก่อน Export');
-        return;
-      }
+      if (!lastReportData) return alert('กรุณาค้นหาข้อมูลก่อน Export');
       const { list, gTotal, gCompleted, percent, startDate, endDate, filterDocCode, filterClinicName } = lastReportData;
 
       let rowsHtml = '';
@@ -599,36 +552,10 @@
       });
 
       const printArea = document.createElement('div');
-      printArea.id = 'pdf-render-area';
       printArea.style.cssText = 'position:fixed; top:-9999px; left:-9999px; width:1000px; background:#fff; padding:30px; font-family:Kanit, sans-serif; color:#111;';
       printArea.innerHTML = `
         <div style="text-align:center; margin-bottom:16px; border-bottom:3px solid #2563eb; padding-bottom:12px;">
           <h2 style="margin:0; color:#1e3a8a; font-size:22px;">🏥 ระบบรายงานผลการลงข้อมูลแพทย์</h2>
-          <p style="margin:4px 0 0; color:#555; font-size:14px;">รายงานสรุปผลการลงข้อมูลผู้ป่วยรายแพทย์</p>
-        </div>
-        <table style="width:100%; margin-bottom:16px; font-size:14px; border-collapse:collapse;">
-          <tr>
-            <td style="padding:4px 0;"><strong>ช่วงวันที่:</strong> ${toThaiDateDisplay(startDate)} - ${toThaiDateDisplay(endDate)}</td>
-            <td style="padding:4px 0;"><strong>วันที่ออกรายงาน:</strong> ${new Date().toLocaleString('th-TH')}</td>
-          </tr>
-          <tr>
-            <td style="padding:4px 0;"><strong>คลินิก:</strong> ${filterClinicName}</td>
-            <td style="padding:4px 0;"><strong>เลข ว. แพทย์:</strong> ${filterDocCode}</td>
-          </tr>
-        </table>
-        <div style="display:flex; gap:12px; margin-bottom:18px;">
-          <div style="flex:1; text-align:center; background:#eff6ff; padding:12px; border-radius:8px; border:1px solid #bfdbfe;">
-            <div style="font-size:12px;color:#1e40af;">เคสตรวจทั้งหมด</div>
-            <div style="font-size:22px;font-weight:bold;color:#1e3a8a;">${gTotal.toLocaleString()}</div>
-          </div>
-          <div style="flex:1; text-align:center; background:#f0fdf4; padding:12px; border-radius:8px; border:1px solid #bbf7d0;">
-            <div style="font-size:12px;color:#15803d;">ลงข้อมูลแล้ว</div>
-            <div style="font-size:22px;font-weight:bold;color:#166534;">${gCompleted.toLocaleString()}</div>
-          </div>
-          <div style="flex:1; text-align:center; background:#faf5ff; padding:12px; border-radius:8px; border:1px solid #e9d5ff;">
-            <div style="font-size:12px;color:#7e22ce;">อัตราความสำเร็จ</div>
-            <div style="font-size:22px;font-weight:bold;color:#581c87;">${percent}%</div>
-          </div>
         </div>
         <table style="width:100%; border-collapse:collapse; font-size:13px;">
           <tr style="background:#334155; color:#fff;">
@@ -639,9 +566,7 @@
             <th style="padding:8px;border:1px solid #ccc;">เสร็จ (เคส)</th>
             <th style="padding:8px;border:1px solid #ccc;">% ความสำเร็จ</th>
           </tr>
-          
           ${rowsHtml}
-          
           <tr style="background:#f1f5f9; font-weight:bold; color:#111;">
             <td style="padding:8px;border:1px solid #ccc; text-align:center;" colspan="3">รวมทั้งหมด</td>
             <td style="padding:8px;border:1px solid #ccc;text-align:right;">${gTotal.toLocaleString()}</td>
@@ -649,47 +574,23 @@
             <td style="padding:8px;border:1px solid #ccc;text-align:right;">${percent}%</td>
           </tr>
         </table>
-        <div style="margin-top:26px; font-size:12px; color:#666; border-top:1px solid #ddd; padding-top:10px; text-align:center;">
-          <p>ผู้จัดทำ: <strong>ณฐพล มูลศาสตร์</strong> &nbsp;|&nbsp; นักวิชาการคอมพิวเตอร์ กลุ่มงานสุขภาพดิจิทัล</p>
-        </div>
       `;
       document.body.appendChild(printArea);
 
       try {
         const canvas = await html2canvas(printArea, { scale: 2, useCORS: true });
         const imgData = canvas.toDataURL('image/png');
-
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-        let heightLeft = pdfHeight;
-        let position = 0;
-
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
-
-        while (heightLeft > 0) {
-          position = heightLeft - pdfHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-          heightLeft -= pageHeight;
-        }
-
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`รายงานลงข้อมูลแพทย์_${startDate}_ถึง_${endDate}.pdf`);
-      } catch (err) {
-        console.error(err);
-        alert('เกิดข้อผิดพลาดในการสร้างไฟล์ PDF กรุณาลองใหม่อีกครั้ง');
       } finally {
         document.body.removeChild(printArea);
       }
     }
 
-    // ==========================================
-    // 6. ฟังก์ชันอัปโหลด CSV (Tab 2)
-    // ==========================================
     function updateFileName() {
       const fileInput = document.getElementById('csv-file');
       const fileNameDisplay = document.getElementById('file-name');
@@ -757,12 +658,6 @@
             });
           }
 
-          if (dataToInsert.length === 0) {
-            statusDiv.classList.replace('text-blue-600', 'text-red-600');
-            statusDiv.innerText = '❌ ไม่พบข้อมูลที่ถูกต้องในไฟล์ กรุณาตรวจสอบคอลัมน์';
-            return;
-          }
-
           const batchSize = 1000;
           let hasError = false;
 
@@ -773,7 +668,6 @@
               .upsert(batch, { onConflict: 'regist_date, clinic, doc_code, doc_name' });
             
             if (error) {
-              console.error("DB Error:", error);
               hasError = true;
               break;
             }
@@ -781,7 +675,7 @@
 
           if (hasError) {
             statusDiv.classList.replace('text-blue-600', 'text-red-600');
-            statusDiv.innerText = '❌ เกิดข้อผิดพลาดในการส่งข้อมูลขึ้นฐานข้อมูล กด F12 ดูรายละเอียดใน Console';
+            statusDiv.innerText = '❌ เกิดข้อผิดพลาดในการส่งข้อมูลขึ้นฐานข้อมูล';
           } else {
             statusDiv.classList.replace('text-blue-600', 'text-green-600');
             statusDiv.innerText = `✅ อัปโหลดและอัปเดตข้อมูลสำเร็จเรียบร้อย!`;
