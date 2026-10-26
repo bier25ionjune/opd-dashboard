@@ -122,14 +122,14 @@
           </div>
         </div>
 
-        <!-- รายละเอียดส่วนตัว: กราฟ + วันที่ค้างลง (สร้างด้วย buildMyShell) -->
         <div id="my-detail" class="hidden mb-6 fade-in"></div>
 
         <div id="export-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 mb-3">
           <p class="text-xs sm:text-sm text-gray-500">พบข้อมูลทั้งหมด <span id="result-count" class="font-bold text-gray-700">0</span> รายการ</p>
           <div class="flex gap-2 w-full sm:w-auto">
-            <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📊 Export Excel</button>
-            <button onclick="exportPDF()" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📄 Export PDF</button>
+            <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📊 Excel (ละเอียด)</button>
+            <button onclick="exportCSV()" class="flex-1 sm:flex-none bg-slate-600 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📑 CSV</button>
+            <button onclick="exportPDF()" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📄 PDF</button>
           </div>
         </div>
 
@@ -186,16 +186,12 @@
   </div>
 
   <script>
-    // =====================================================================
-    //  CONFIG
-    // =====================================================================
+    // ===================== CONFIG =====================
     const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // =====================================================================
-    //  UTILITIES
-    // =====================================================================
+    // ===================== UTILITIES =====================
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const pctOf = (c, t) => (t > 0 ? (c / t) * 100 : 0);
@@ -253,9 +249,7 @@
     const tdc = (label, html) => td(label, html, 'cell-clinic text-left font-medium text-slate-700');
     const subP = (id, txt = '') => `<p id="${id}" class="text-[11px] text-slate-500 mt-0.5">${txt}</p>`;
 
-    // =====================================================================
-    //  โครงหน้า / สลับมุมมอง / ช่วงวันที่
-    // =====================================================================
+    // ===================== โครงหน้า / สลับมุมมอง / ช่วงวันที่ =====================
     let dataRange = { min: '', max: '' };
     let execLoaded = false, execPending = false;
 
@@ -377,9 +371,7 @@
         </details>`;
     }
 
-    // =====================================================================
-    //  INIT / DROPDOWN / AVAILABILITY
-    // =====================================================================
+    // ===================== INIT / DROPDOWN / AVAILABILITY =====================
     window.onload = async function () {
       buildExecShell(); buildMyShell(); buildPresets();
       loadClinicDropdown();
@@ -420,9 +412,7 @@
       }
     }
 
-    // =====================================================================
-    //  มุมมอง: รายงานของฉัน
-    // =====================================================================
+    // ===================== มุมมอง: รายงานของฉัน =====================
     let lastReportData = null, myChart = null;
 
     async function fetchMy() {
@@ -491,7 +481,7 @@
         </tr>`;
       }).join('');
 
-      lastReportData = { list, gTotal, gCompleted, percent, startDate, endDate };
+      lastReportData = { list, rows: data, gTotal, gCompleted, percent, startDate, endDate, filters: { kw: rawKw, clinic } };
       $('result-count').innerText = list.length.toLocaleString();
       $('export-toolbar').classList.remove('hidden');
       renderMyDetail(data);
@@ -500,7 +490,6 @@
     function renderMyDetail(data) {
       $('my-detail').classList.remove('hidden');
 
-      // กราฟรายวัน: ลงแล้ว vs ค้างลง
       const daily = [...groupBy(data, r => String(r.regist_date).slice(0, 10)).values()].sort((a, b) => a.key.localeCompare(b.key));
       if (myChart) { myChart.destroy(); myChart = null; }
       $('chart-my').innerHTML = '';
@@ -521,7 +510,6 @@
       });
       myChart.render();
 
-      // ตารางวันที่ยังค้างลง
       const pending = data
         .map(r => ({ date: String(r.regist_date).slice(0, 10), clinic: r.clinic, doc: r.doc_name, total: Number(r.total_cases) || 0, completed: Number(r.completed_cases) || 0 }))
         .filter(r => r.total - r.completed > 0)
@@ -544,9 +532,7 @@
         : '<tr><td colspan="6" class="py-10 text-center text-emerald-600">🎉 ลงข้อมูลครบทุกเคสในช่วงนี้แล้ว</td></tr>';
     }
 
-    // =====================================================================
-    //  มุมมอง: ภาพรวมผู้บริหาร
-    // =====================================================================
+    // ===================== มุมมอง: ภาพรวมผู้บริหาร =====================
     let execState = { rows: [], prevRows: [], list: [], startDate: '', endDate: '', prevStart: '', prevEnd: '', showAllWatch: false, daily: [], clinics: [], flagged: [], cur: null, docStats: null, dow: [], ranking: [] };
     let trendChart = null, clinicChart = null;
 
@@ -636,7 +622,6 @@
       return { total, completed, backlog: total - completed, pct: pctOf(completed, total), days: days.size, doctors: docs.size };
     }
 
-    // ---------- UI helpers ----------
     function colorFor(pct, th) { return pct >= th ? '#10b981' : (pct >= 50 ? '#f59e0b' : '#f43f5e'); }
 
     function statusBadge(pct, th) {
@@ -676,11 +661,9 @@
       </div>`;
     }
 
-    // ---------- Main render ----------
     function renderExecutive() {
       const s = execState;
       if (!s.rows.length) return;
-      // ถ้าผู้ใช้สลับไปแท็บอื่นระหว่างโหลด ให้รอเรนเดอร์ตอนกลับมา (กราฟต้องวาดตอนมองเห็นเท่านั้น)
       if ($('view-exec').classList.contains('hidden')) { execPending = true; return; }
 
       const th = Number($('exec-threshold').value);
@@ -736,7 +719,6 @@
       renderRanking();
     }
 
-    // ---------- Charts ----------
     function renderTrendChart() {
       const d = execState.daily;
       if (trendChart) { trendChart.destroy(); trendChart = null; }
@@ -806,7 +788,6 @@
       clinicChart.render();
     }
 
-    // ---------- Tables ----------
     function renderClinicTable(th) {
       $('exec-clinic-body').innerHTML = execState.clinics.map(c => `<tr class="hover:bg-slate-50">
         ${tdc('คลินิก', esc(c.name))}
@@ -863,7 +844,6 @@
       </tr>`).join('');
     }
 
-    // ---------- สถิติรายแพทย์ (ใช้ร่วม Heatmap + อันดับ) ----------
     function buildDoctorStats() {
       const map = new Map();
       execState.rows.forEach(r => {
@@ -884,7 +864,6 @@
       });
     }
 
-    // ---------- ตารางแยกตามวันในสัปดาห์ ----------
     function renderDow(th) {
       const s = execState;
       const buckets = DOW_ORDER.map(dw => ({ dw, dates: new Set(), total: 0, completed: 0 }));
@@ -921,7 +900,6 @@
       }).join('');
     }
 
-    // ---------- Heatmap แพทย์ × วัน ----------
     function heatColor(pct, th) {
       if (pct >= 100) return { bg: '#6ee7b7', fg: '#064e3b' };
       if (pct >= th) return { bg: '#a7f3d0', fg: '#065f46' };
@@ -980,7 +958,6 @@
         </tr></thead><tbody>${bodyRows}</tbody></table>`;
     }
 
-    // ---------- อันดับแพทย์ดีเด่น ----------
     function renderRanking() {
       const s = execState;
       if (!s.docStats) return;
@@ -1035,12 +1012,206 @@
       </tr>`).join('');
     }
 
-    // =====================================================================
-    //  EXPORT
-    // =====================================================================
+    // ===================== EXPORT =====================
+    function saveBlob(blob, filename) {
+      if (navigator.msSaveBlob) { navigator.msSaveBlob(blob, filename); return; }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.style.display = 'none';
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+    }
+
+    const isInAppBrowser = () => /Line\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(navigator.userAgent);
+
+    function saveWorkbook(wb, filename) {
+      if (typeof XLSX === 'undefined') {
+        alert('ไม่สามารถโหลดไลบรารี Excel ได้\n(อาจถูกเครือข่ายบล็อก) กรุณารีเฟรชหน้า หรือใช้ปุ่ม CSV แทน');
+        return false;
+      }
+      try {
+        const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        saveBlob(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), filename);
+        if (isInAppBrowser()) alert('หากไฟล์ไม่ดาวน์โหลด: เบราว์เซอร์ใน LINE/Facebook บล็อกการดาวน์โหลด\nกรุณากด ⋮ แล้วเลือก "เปิดด้วย Chrome/Safari"');
+        return true;
+      } catch (e) {
+        console.error(e);
+        alert('Export Excel ไม่สำเร็จ: ' + e.message + '\nลองใช้ปุ่ม CSV แทน');
+        return false;
+      }
+    }
+
+    const statusText = (c, t) => {
+      if (!(t > 0)) return '-';
+      const p = (c / t) * 100;
+      return p >= 90 ? 'ดีเยี่ยม (≥90%)' : p >= 50 ? 'พอใช้ (50–89.9%)' : 'ต้องติดตาม (<50%)';
+    };
+
+    // asFraction=true → % เป็นเศษส่วน (จัดรูปแบบ 0.0% ใน Excel) | false → ตัวเลข % (สำหรับ CSV)
+    function detailTable(rows, asFraction) {
+      const sorted = [...rows].sort((a, b) =>
+        String(a.regist_date).localeCompare(String(b.regist_date)) ||
+        String(a.clinic).localeCompare(String(b.clinic)) ||
+        String(a.doc_name).localeCompare(String(b.doc_name)));
+      const headers = ['วันที่ (ค.ศ.)', 'วันที่ (พ.ศ.)', 'วัน', 'คลินิก', 'เลข ว.', 'ชื่อแพทย์', 'เคสทั้งหมด', 'ลงแล้ว', 'ค้างลง', '% ลงข้อมูล', 'สถานะ'];
+      const body = sorted.map(r => {
+        const iso = String(r.regist_date).slice(0, 10);
+        const t = Number(r.total_cases) || 0, c = Number(r.completed_cases) || 0;
+        const p = t > 0 ? (asFraction ? c / t : Number(((c / t) * 100).toFixed(1))) : null;
+        return [iso, toThaiDateDisplay(iso), DOW_NAMES[dowOf(iso)], r.clinic, String(r.doc_code), r.doc_name, t, c, t - c, p, statusText(c, t)];
+      });
+      return { headers, rows: body, widths: [13, 13, 11, 26, 10, 28, 11, 9, 9, 12, 18] };
+    }
+
+    function addSheet(wb, name, headers, rows, { widths = [], pctCols = [] } = {}) {
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      ws['!cols'] = headers.map((h, i) => ({ wch: widths[i] || Math.max(10, String(h).length + 4) }));
+      if (rows.length) ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: headers.length - 1 } }) };
+      pctCols.forEach(c => {
+        for (let r = 1; r <= rows.length; r++) {
+          const cell = ws[XLSX.utils.encode_cell({ r, c })];
+          if (cell && typeof cell.v === 'number') cell.z = '0.0%';
+        }
+      });
+      XLSX.utils.book_append_sheet(wb, ws, name);
+      return ws;
+    }
+
+    function buildMyWorkbook(d) {
+      const { rows, gTotal, gCompleted, startDate, endDate, filters } = d;
+      const wb = XLSX.utils.book_new();
+      const frac = (c, t) => (t > 0 ? c / t : null);
+
+      const docMap = new Map(), dayMap = new Map(), clinicMap = new Map();
+      rows.forEach(r => {
+        const iso = String(r.regist_date).slice(0, 10);
+        const t = Number(r.total_cases) || 0, c = Number(r.completed_cases) || 0;
+        const dk = `${r.clinic}||${r.doc_code}`;
+        let doc = docMap.get(dk);
+        if (!doc) { doc = { clinic: r.clinic, code: String(r.doc_code), name: r.doc_name, total: 0, completed: 0, byDate: new Map() }; docMap.set(dk, doc); }
+        doc.total += t; doc.completed += c;
+        const cell = doc.byDate.get(iso) || { t: 0, c: 0 };
+        cell.t += t; cell.c += c; doc.byDate.set(iso, cell);
+
+        let dy = dayMap.get(iso);
+        if (!dy) { dy = { total: 0, completed: 0, docs: new Set() }; dayMap.set(iso, dy); }
+        dy.total += t; dy.completed += c; dy.docs.add(dk);
+
+        let cl = clinicMap.get(r.clinic);
+        if (!cl) { cl = { total: 0, completed: 0, docs: new Set() }; clinicMap.set(r.clinic, cl); }
+        cl.total += t; cl.completed += c; cl.docs.add(dk);
+      });
+      const docs = [...docMap.values()].sort((a, b) => String(a.clinic).localeCompare(String(b.clinic)) || String(a.name).localeCompare(String(b.name)));
+      const dates = [...dayMap.keys()].sort();
+
+      // ชีต 1: สรุป
+      const sum = [
+        ['รายงานผลการลงข้อมูลแพทย์'],
+        ['สร้างรายงานเมื่อ', new Date().toLocaleString('th-TH')],
+        ['ช่วงวันที่', `${toThaiDateDisplay(startDate)} - ${toThaiDateDisplay(endDate)} (${daysBetween(startDate, endDate)} วัน)`],
+        ['ตัวกรอง: เลข ว./ชื่อแพทย์', filters.kw || 'ทั้งหมด'],
+        ['ตัวกรอง: คลินิก', filters.clinic || 'ทุกคลินิก'],
+        [],
+        ['เคสทั้งหมด', gTotal],
+        ['ลงข้อมูลแล้ว', gCompleted],
+        ['ค้างลงข้อมูล', gTotal - gCompleted],
+        ['% ลงข้อมูลรวม', frac(gCompleted, gTotal)],
+        [],
+        ['จำนวนแพทย์', docs.length],
+        ['จำนวนคลินิก', clinicMap.size],
+        ['จำนวนวันที่มีข้อมูล', dates.length],
+        [],
+        ['เกณฑ์สถานะ', 'ดีเยี่ยม ≥ 90% · พอใช้ 50–89.9% · ต้องติดตาม < 50%']
+      ];
+      const wsSum = XLSX.utils.aoa_to_sheet(sum);
+      wsSum['!cols'] = [{ wch: 28 }, { wch: 60 }];
+      const pc = wsSum[XLSX.utils.encode_cell({ r: 9, c: 1 })];
+      if (pc && typeof pc.v === 'number') pc.z = '0.0%';
+      XLSX.utils.book_append_sheet(wb, wsSum, 'สรุป');
+
+      // ชีต 2: รายแพทย์
+      addSheet(wb, 'รายแพทย์',
+        ['คลินิก', 'เลข ว.', 'ชื่อแพทย์', 'เคสทั้งหมด', 'ลงแล้ว', 'ค้างลง', '% ลงข้อมูล', 'สถานะ', 'จำนวนวันที่มีเคส', 'จำนวนวันที่ลงครบ 100%'],
+        docs.map(x => {
+          let active = 0, perfect = 0;
+          x.byDate.forEach(v => { if (v.t > 0) { active++; if (v.c >= v.t) perfect++; } });
+          return [x.clinic, x.code, x.name, x.total, x.completed, x.total - x.completed, frac(x.completed, x.total), statusText(x.completed, x.total), active, perfect];
+        }),
+        { widths: [26, 10, 28, 12, 9, 9, 12, 18, 16, 20], pctCols: [6] });
+
+      // ชีต 3: รายวัน-รายแพทย์ (ข้อมูลดิบ)
+      const dt = detailTable(rows, true);
+      addSheet(wb, 'รายวัน-รายแพทย์', dt.headers, dt.rows, { widths: dt.widths, pctCols: [9] });
+
+      // ชีต 4: สรุปรายวัน
+      addSheet(wb, 'สรุปรายวัน',
+        ['วันที่ (ค.ศ.)', 'วันที่ (พ.ศ.)', 'วัน', 'เคสทั้งหมด', 'ลงแล้ว', 'ค้างลง', '% ลงข้อมูล', 'จำนวนแพทย์'],
+        dates.map(iso => { const v = dayMap.get(iso); return [iso, toThaiDateDisplay(iso), DOW_NAMES[dowOf(iso)], v.total, v.completed, v.total - v.completed, frac(v.completed, v.total), v.docs.size]; }),
+        { widths: [13, 13, 11, 12, 9, 9, 12, 12], pctCols: [6] });
+
+      // ชีต 5: สรุปรายคลินิก
+      addSheet(wb, 'สรุปรายคลินิก',
+        ['คลินิก', 'จำนวนแพทย์', 'เคสทั้งหมด', 'ลงแล้ว', 'ค้างลง', '% ลงข้อมูล'],
+        [...clinicMap.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+          .map(([name, v]) => [name, v.docs.size, v.total, v.completed, v.total - v.completed, frac(v.completed, v.total)]),
+        { widths: [30, 12, 12, 9, 9, 12], pctCols: [5] });
+
+      // ชีต 6: วันในสัปดาห์
+      const dowRows = DOW_ORDER.map(dw => {
+        const ds = dates.filter(iso => dowOf(iso) === dw);
+        if (!ds.length) return null;
+        const t = ds.reduce((s, iso) => s + dayMap.get(iso).total, 0);
+        const c = ds.reduce((s, iso) => s + dayMap.get(iso).completed, 0);
+        return [DOW_NAMES[dw], ds.length, Number((t / ds.length).toFixed(1)), Number(((t - c) / ds.length).toFixed(1)), frac(c, t)];
+      }).filter(Boolean);
+      addSheet(wb, 'วันในสัปดาห์', ['วัน', 'จำนวนวันที่มีข้อมูล', 'เคสเฉลี่ย/วัน', 'ค้างลงเฉลี่ย/วัน', '% ลงข้อมูล'], dowRows,
+        { widths: [14, 20, 14, 16, 12], pctCols: [4] });
+
+      // ชีต 7: เคสค้างลง
+      const pend = detailTable(rows, true).rows.filter(r => r[8] > 0)
+        .sort((a, b) => String(b[0]).localeCompare(String(a[0])) || b[8] - a[8])
+        .map(r => r.slice(0, 9));
+      addSheet(wb, 'เคสค้างลง', ['วันที่ (ค.ศ.)', 'วันที่ (พ.ศ.)', 'วัน', 'คลินิก', 'เลข ว.', 'ชื่อแพทย์', 'เคสทั้งหมด', 'ลงแล้ว', 'ค้างลง'], pend,
+        { widths: [13, 13, 11, 26, 10, 28, 11, 9, 9] });
+
+      // ชีต 8: Matrix แพทย์ × วัน (% ลงข้อมูล)
+      if (docs.length * dates.length <= 150000) {
+        const head = ['คลินิก', 'เลข ว.', 'ชื่อแพทย์', ...dates.map(shortDate), 'รวม'];
+        const body = docs.map(x => [x.clinic, x.code, x.name,
+          ...dates.map(iso => { const v = x.byDate.get(iso); return v && v.t > 0 ? v.c / v.t : null; }),
+          frac(x.completed, x.total)]);
+        const pcs = Array.from({ length: dates.length + 1 }, (_, i) => i + 3);
+        addSheet(wb, 'Matrix แพทย์-วัน', head, body, { widths: [26, 10, 28, ...dates.map(() => 7), 8], pctCols: pcs });
+      }
+      return wb;
+    }
+
+    function exportExcel() {
+      if (!lastReportData) return alert('กรุณาค้นหาข้อมูลก่อน Export');
+      if (typeof XLSX === 'undefined') return alert('ไม่สามารถโหลดไลบรารี Excel ได้ กรุณารีเฟรชหน้า หรือใช้ปุ่ม CSV แทน');
+      const d = lastReportData;
+      try {
+        saveWorkbook(buildMyWorkbook(d), `OPD_DoctorReport_${d.startDate}_to_${d.endDate}.xlsx`);
+      } catch (e) {
+        console.error(e);
+        alert('สร้างไฟล์ Excel ไม่สำเร็จ: ' + e.message + '\nลองใช้ปุ่ม CSV แทน');
+      }
+    }
+
+    // CSV สำรอง: ไม่พึ่งไลบรารีใด (ใส่ BOM ให้ Excel อ่านภาษาไทยถูก)
+    function exportCSV() {
+      if (!lastReportData) return alert('กรุณาค้นหาข้อมูลก่อน Export');
+      const d = lastReportData;
+      const dt = detailTable(d.rows, false);
+      const cell = v => { if (v === null || v === undefined) return ''; const s = String(v); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+      const csv = '\ufeff' + [dt.headers, ...dt.rows].map(r => r.map(cell).join(',')).join('\r\n');
+      saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `OPD_DoctorReport_${d.startDate}_to_${d.endDate}.csv`);
+    }
+
     function exportExecExcel() {
       const s = execState;
       if (!s.rows.length) return alert('กรุณาแสดงภาพรวมก่อน Export');
+      if (typeof XLSX === 'undefined') return alert('ไม่สามารถโหลดไลบรารี Excel ได้ กรุณารีเฟรชหน้า');
       const th = Number($('exec-threshold').value);
       const f1 = n => Number(n.toFixed(1));
       const title = [`รายงานผู้บริหาร: ${toThaiDateDisplay(s.startDate)} - ${toThaiDateDisplay(s.endDate)}`, `เกณฑ์ผ่าน: ${th}%`, []];
@@ -1068,26 +1239,9 @@
         ['อันดับ', 'ชื่อแพทย์', 'คลินิก', 'เลข ว.', 'รวม (เคส)', 'เสร็จ (เคส)', '% สำเร็จ', 'วันที่มีเคส', 'ลงครบ 100% (วัน)', '% วันที่ลงครบ'],
         ...s.ranking.map((d, i) => [i + 1, d.docName, d.clinic, d.docId, d.total, d.completed, f1(d.pct), d.activeDays, d.perfectDays, f1(d.consistency)])
       ]);
-      XLSX.writeFile(wb, `รายงานผู้บริหาร_${s.startDate}_ถึง_${s.endDate}.xlsx`);
-    }
-
-    function exportExcel() {
-      if (!lastReportData) return alert('กรุณาค้นหาข้อมูลก่อน Export');
-      const { list, gTotal, gCompleted, percent, startDate, endDate } = lastReportData;
-      const wsData = [
-        ['ระบบรายงานผลการลงข้อมูลแพทย์'],
-        [`ช่วงวันที่: ${toThaiDateDisplay(startDate)} - ${toThaiDateDisplay(endDate)}`],
-        [],
-        ['คลินิก', 'เลข ว.', 'ชื่อแพทย์', 'รวม (เคส)', 'เสร็จ (เคส)', '% ความสำเร็จ']
-      ];
-      list.forEach(i => {
-        const pct = i.total > 0 ? ((i.completed / i.total) * 100).toFixed(1) : '0.0';
-        wsData.push([i.clinic, i.docId, i.docName, i.total, i.completed, `${pct}%`]);
-      });
-      wsData.push([], ['รวมทั้งหมด', '', '', gTotal, gCompleted, `${percent}%`]);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), 'รายงาน');
-      XLSX.writeFile(wb, `รายงานลงข้อมูลแพทย์_${startDate}_ถึง_${endDate}.xlsx`);
+      const dtl = detailTable(s.rows, true);
+      addSheet(wb, 'รายวัน-รายแพทย์', dtl.headers, dtl.rows, { widths: dtl.widths, pctCols: [9] });
+      saveWorkbook(wb, `OPD_ExecReport_${s.startDate}_to_${s.endDate}.xlsx`);
     }
 
     async function exportPDF() {
@@ -1122,7 +1276,7 @@
         const pdf = new jsPDF('p', 'mm', 'a4');
         const w = pdf.internal.pageSize.getWidth();
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, (canvas.height * w) / canvas.width);
-        pdf.save(`รายงานลงข้อมูลแพทย์_${startDate}_ถึง_${endDate}.pdf`);
+        pdf.save(`OPD_DoctorReport_${startDate}_to_${endDate}.pdf`);
       } finally {
         document.body.removeChild(printArea);
       }
