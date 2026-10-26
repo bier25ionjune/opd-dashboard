@@ -16,6 +16,8 @@
   <!-- นำเข้า html2canvas + jsPDF สำหรับ Export PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- ApexCharts สำหรับกราฟผู้บริหาร -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.1"></script>
   <style>
     * { font-family: 'Kanit', sans-serif; }
     html { -webkit-text-size-adjust: 100%; }
@@ -240,7 +242,139 @@
             <h3 class="text-lg sm:text-3xl font-bold text-purple-800 mt-1" id="sum-percent">0.0%</h3>
           </div>
         </div>
+<!-- ===== EXECUTIVE SECTION ===== -->
+<div id="exec-section" class="hidden space-y-4 sm:space-y-5 mb-6 fade-in">
 
+  <!-- หัวข้อ + ตัวควบคุม -->
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h2 class="text-base sm:text-lg font-semibold text-slate-800">📈 ภาพรวมสำหรับผู้บริหาร</h2>
+      <p id="exec-subtitle" class="text-xs text-slate-500 mt-0.5"></p>
+    </div>
+    <div class="flex flex-wrap items-end gap-2">
+      <div>
+        <label class="block text-[11px] text-slate-500 mb-1">เกณฑ์ % ลงข้อมูล</label>
+        <select id="exec-threshold" onchange="renderExecutive()" class="p-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-300">
+          <option value="50">ต่ำกว่า 50%</option>
+          <option value="70">ต่ำกว่า 70%</option>
+          <option value="80" selected>ต่ำกว่า 80%</option>
+          <option value="90">ต่ำกว่า 90%</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[11px] text-slate-500 mb-1">เคสขั้นต่ำ/แพทย์</label>
+        <select id="exec-mincases" onchange="renderExecutive()" class="p-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-300">
+          <option value="1">≥ 1 เคส</option>
+          <option value="5" selected>≥ 5 เคส</option>
+          <option value="10">≥ 10 เคส</option>
+          <option value="20">≥ 20 เคส</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[11px] text-slate-500 mb-1">เรียงคลินิกตาม</label>
+        <select id="exec-clinic-sort" onchange="renderExecutive()" class="p-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-300">
+          <option value="pct-asc" selected>% ต่ำ → สูง</option>
+          <option value="backlog-desc">เคสค้างมาก → น้อย</option>
+          <option value="total-desc">เคสทั้งหมดมาก → น้อย</option>
+        </select>
+      </div>
+      <button onclick="exportExecExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-3 rounded-lg shadow-sm transition">
+        📊 Excel ผู้บริหาร
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div id="exec-kpis" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+
+  <!-- กราฟ -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 sm:p-4">
+      <h3 class="text-sm font-semibold text-slate-700">แนวโน้มรายวัน</h3>
+      <p class="text-[11px] text-slate-400 mb-2">เคสทั้งหมด / ลงข้อมูลแล้ว / % สำเร็จ</p>
+      <div id="chart-trend"></div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 sm:p-4">
+      <h3 class="text-sm font-semibold text-slate-700">% ลงข้อมูลรายคลินิก</h3>
+      <p class="text-[11px] text-slate-400 mb-2">สี: เขียว = ผ่านเกณฑ์ · เหลือง = ใกล้เกณฑ์ · แดง = ต่ำกว่า 50%</p>
+      <div id="chart-clinic"></div>
+    </div>
+  </div>
+
+  <!-- ตารางรายคลินิก -->
+  <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-100">
+      <h3 class="text-sm font-semibold text-slate-700">🏥 เปรียบเทียบรายคลินิก</h3>
+    </div>
+    <div class="overflow-x-auto max-h-[420px] overflow-y-auto">
+      <table class="min-w-full responsive-table">
+        <thead class="bg-slate-50 text-slate-500 text-xs">
+          <tr>
+            <th class="py-2.5 px-4 text-left font-medium">คลินิก</th>
+            <th class="py-2.5 px-4 text-right font-medium">แพทย์ (คน)</th>
+            <th class="py-2.5 px-4 text-right font-medium">รวม (เคส)</th>
+            <th class="py-2.5 px-4 text-right font-medium">เสร็จ (เคส)</th>
+            <th class="py-2.5 px-4 text-right font-medium">ค้างลง (เคส)</th>
+            <th class="py-2.5 px-4 text-right font-medium">% สำเร็จ</th>
+            <th class="py-2.5 px-4 text-right font-medium">เทียบช่วงก่อน</th>
+          </tr>
+        </thead>
+        <tbody id="exec-clinic-body" class="text-xs sm:text-sm divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ตารางแพทย์ที่ต้องติดตาม -->
+  <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h3 class="text-sm font-semibold text-slate-700">🚩 แพทย์ที่ควรติดตาม</h3>
+        <p id="exec-watch-summary" class="text-[11px] text-slate-500 mt-0.5"></p>
+      </div>
+      <button id="exec-watch-toggle" onclick="toggleWatchAll()" class="hidden text-xs text-blue-600 hover:text-blue-700 font-medium"></button>
+    </div>
+    <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
+      <table class="min-w-full responsive-table">
+        <thead class="bg-slate-50 text-slate-500 text-xs">
+          <tr>
+            <th class="py-2.5 px-4 text-left font-medium">คลินิก</th>
+            <th class="py-2.5 px-4 text-center font-medium">เลข ว.</th>
+            <th class="py-2.5 px-4 text-left font-medium">ชื่อแพทย์</th>
+            <th class="py-2.5 px-4 text-right font-medium">รวม (เคส)</th>
+            <th class="py-2.5 px-4 text-right font-medium">ค้างลง (เคส)</th>
+            <th class="py-2.5 px-4 text-right font-medium">% สำเร็จ</th>
+            <th class="py-2.5 px-4 text-center font-medium">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="exec-watch-body" class="text-xs sm:text-sm divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ตารางรายวัน (พับได้) -->
+  <details class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden group">
+    <summary class="px-4 py-3 cursor-pointer select-none text-sm font-semibold text-slate-700 flex items-center justify-between hover:bg-slate-50">
+      <span>📅 ตารางสรุปรายวัน</span>
+      <span class="text-xs text-slate-400 font-normal group-open:hidden">คลิกเพื่อขยาย</span>
+    </summary>
+    <div class="overflow-x-auto max-h-[420px] overflow-y-auto border-t border-slate-100">
+      <table class="min-w-full responsive-table">
+        <thead class="bg-slate-50 text-slate-500 text-xs">
+          <tr>
+            <th class="py-2.5 px-4 text-left font-medium">วันที่</th>
+            <th class="py-2.5 px-4 text-right font-medium">รวม (เคส)</th>
+            <th class="py-2.5 px-4 text-right font-medium">เสร็จ (เคส)</th>
+            <th class="py-2.5 px-4 text-right font-medium">ค้างลง (เคส)</th>
+            <th class="py-2.5 px-4 text-right font-medium">% สำเร็จ</th>
+            <th class="py-2.5 px-4 text-center font-medium">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="exec-daily-body" class="text-xs sm:text-sm divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </details>
+</div>
+<!-- ===== END EXECUTIVE SECTION ===== -->
         <!-- แถบ Export -->
         <div id="export-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 mb-3">
           <p class="text-xs sm:text-sm text-gray-500">พบข้อมูลทั้งหมด <span id="result-count" class="font-bold text-gray-700">0</span> รายการ</p>
@@ -399,18 +533,107 @@
     // ==========================================
     // ฟังก์ชันดูรายงาน (รวมยอดสะสมรายแพทย์ตลอดช่วงเวลาที่เลือก)
     // ==========================================
-    async function fetchReport() {
-      const startDate = document.getElementById('start-date').value;
-      const endDate = document.getElementById('end-date').value;
-      const filterDocCode = document.getElementById('filter-doccode').value.trim();
-      const filterClinic = document.getElementById('filter-clinic').value;
-      const tbody = document.getElementById('report-table-body');
-      const exportToolbar = document.getElementById('export-toolbar');
+   async function fetchReport() {
+  const startDate = document.getElementById('start-date').value;
+  const endDate = document.getElementById('end-date').value;
+  const filterDocCode = document.getElementById('filter-doccode').value.trim();
+  const filterClinic = document.getElementById('filter-clinic').value;
+  const tbody = document.getElementById('report-table-body');
+  const exportToolbar = document.getElementById('export-toolbar');
 
-      if (!startDate || !endDate) {
-        alert("กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด");
-        return;
-      }
+  if (!startDate || !endDate) { alert("กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด"); return; }
+  if (startDate > endDate) { alert("วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด"); return; }
+
+  exportToolbar.classList.add('hidden');
+  lastReportData = null;
+  tbody.innerHTML = `<tr><td colspan="6" class="py-8"><span class="spinner"></span>กำลังค้นหาข้อมูล...</td></tr>`;
+  showExecSkeleton();
+
+  // ช่วงก่อนหน้า (ยาวเท่ากัน) สำหรับเปรียบเทียบ
+  const span = daysBetween(startDate, endDate);
+  const prevEnd = addDays(startDate, -1);
+  const prevStart = addDays(prevEnd, -(span - 1));
+
+  const buildQuery = (from, to) => {
+    let q = supabaseClient.from('opd_summary').select('*')
+      .gte('regist_date', from).lte('regist_date', to)
+      .order('regist_date').order('clinic').order('doc_code').order('doc_name'); // ลำดับคงที่ เพื่อให้แบ่งหน้าไม่ซ้ำ/ตก
+    if (filterClinic) q = q.eq('clinic', filterClinic);
+    if (filterDocCode) q = q.ilike('doc_code', `%${filterDocCode}%`);
+    return q;
+  };
+
+  let data, prevData;
+  try {
+    [data, prevData] = await Promise.all([
+      fetchAllRows(() => buildQuery(startDate, endDate)),
+      fetchAllRows(() => buildQuery(prevStart, prevEnd)).catch(() => [])  // ถ้าช่วงก่อนหน้าพัง ไม่ให้กระทบรายงานหลัก
+    ]);
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-red-500">❌ Error: ${esc(error.message)}</td></tr>`;
+    $('exec-section').classList.add('hidden');
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-gray-500">❌ ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา</td></tr>';
+    document.getElementById('sum-total').innerText = '0';
+    document.getElementById('sum-completed').innerText = '0';
+    document.getElementById('sum-percent').innerText = '0.0%';
+    destroyCharts();
+    $('exec-section').classList.add('hidden');
+    return;
+  }
+
+  // รวมกลุ่มรายแพทย์ (Clinic + Doc Code) — เหมือนเดิม
+  const aggMap = {};
+  let gTotal = 0, gCompleted = 0;
+  data.forEach(row => {
+    const key = `${row.clinic}_${row.doc_code}`;
+    if (!aggMap[key]) aggMap[key] = { clinic: row.clinic, docId: row.doc_code, docName: row.doc_name, total: 0, completed: 0 };
+    aggMap[key].total += Number(row.total_cases) || 0;
+    aggMap[key].completed += Number(row.completed_cases) || 0;
+  });
+
+  const list = Object.values(aggMap);
+  list.forEach(item => { gTotal += item.total; gCompleted += item.completed; });
+  list.sort((a, b) => a.clinic !== b.clinic ? a.clinic.localeCompare(b.clinic) : b.completed - a.completed);
+
+  document.getElementById('sum-total').innerText = gTotal.toLocaleString();
+  document.getElementById('sum-completed').innerText = gCompleted.toLocaleString();
+  const percent = gTotal > 0 ? ((gCompleted / gTotal) * 100).toFixed(1) : '0.0';
+  document.getElementById('sum-percent').innerText = `${percent}%`;
+
+  let html = '';
+  list.forEach((item, idx) => {
+    const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
+    const rowClass = pct < 50 ? 'bg-red-50 hover:bg-red-100' : (idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-slate-50 hover:bg-blue-50');
+    const pctColor = pct < 50 ? 'text-red-600' : (pct >= 90 ? 'text-green-600' : 'text-blue-600');
+    html += `
+      <tr class="${rowClass}">
+        <td class="cell-clinic py-2.5 px-4 text-left font-medium text-gray-700" data-label="คลินิก">${esc(item.clinic)}</td>
+        <td class="py-2.5 px-4" data-label="เลข ว.">${esc(item.docId)}</td>
+        <td class="py-2.5 px-4 text-left" data-label="ชื่อแพทย์">${esc(item.docName)}</td>
+        <td class="py-2.5 px-4 text-right" data-label="รวม (เคส)">${item.total.toLocaleString()}</td>
+        <td class="py-2.5 px-4 text-right text-green-600 font-medium" data-label="เสร็จ (เคส)">${item.completed.toLocaleString()}</td>
+        <td class="py-2.5 px-4 text-right font-bold ${pctColor}" data-label="% ความสำเร็จ">${pct}%</td>
+      </tr>`;
+  });
+  tbody.innerHTML = html;
+
+  lastReportData = {
+    list, gTotal, gCompleted, percent, startDate, endDate,
+    filterDocCode: filterDocCode || 'ทั้งหมด',
+    filterClinicName: filterClinic || 'ทุกคลินิก'
+  };
+
+  document.getElementById('result-count').innerText = list.length.toLocaleString();
+  exportToolbar.classList.remove('hidden');
+
+  // ⭐ ส่งข้อมูลเข้าส่วนผู้บริหาร
+  execState = { ...execState, rows: data, prevRows: prevData || [], list, startDate, endDate, prevStart, prevEnd, showAllWatch: false };
+  renderExecutive();
+}
 
       exportToolbar.classList.add('hidden');
       lastReportData = null;
@@ -684,6 +907,16 @@
         }
       });
     }
+    // =====================================================================
+//  EXECUTIVE DASHBOARD MODULE
+// =====================================================================
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pctOf = (c, t) => (t > 0 ? (c / t) * 100 : 0);
+const THAI_DOW = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+const CHART_FONT = 'Kanit, sans-serif';
+
+let execState = { rows: [], prevRows: [], list: [
   </script>
 </body>
 </html>
