@@ -7,126 +7,45 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- PapaParse (CSV) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <!-- SheetJS (Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- html2canvas + jsPDF (PDF) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- ApexCharts (กราฟผู้บริหาร) -->
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.1"></script>
   <style>
     * { font-family: 'Kanit', sans-serif; }
     html { -webkit-text-size-adjust: 100%; }
-    body {
-      background: linear-gradient(135deg, #eef2f7 0%, #e0e8f5 100%);
-      min-height: 100vh;
-    }
-    .header-gradient {
-      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #60a5fa 100%);
-    }
-    .tab-btn { transition: all 0.25s ease; position: relative; }
-    .tab-active { color: #2563eb; font-weight: 700; }
-    .tab-active::after {
-      content: '';
-      position: absolute;
-      bottom: -1px; left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, #2563eb, #60a5fa);
-      border-radius: 3px;
-    }
-    .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+    body { background: linear-gradient(135deg, #eef2f7 0%, #e0e8f5 100%); min-height: 100vh; }
+    .header-gradient { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #60a5fa 100%); }
+    .card-hover { transition: transform .2s ease, box-shadow .2s ease; }
+    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,.08); }
     table thead th { position: sticky; top: 0; z-index: 10; }
-    tbody tr { transition: background-color 0.15s ease; }
+    tbody tr { transition: background-color .15s ease; }
     ::-webkit-scrollbar { height: 8px; width: 8px; }
     ::-webkit-scrollbar-thumb { background: #93c5fd; border-radius: 4px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
-    .btn-primary { background: linear-gradient(135deg, #2563eb, #3b82f6); transition: all 0.2s ease; }
-    .btn-primary:hover {
-      background: linear-gradient(135deg, #1d4ed8, #2563eb);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 14px rgba(37, 99, 235, 0.35);
-    }
-    .btn-success { background: linear-gradient(135deg, #16a34a, #22c55e); transition: all 0.2s ease; }
-    .btn-success:hover {
-      background: linear-gradient(135deg, #15803d, #16a34a);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 14px rgba(22, 163, 74, 0.35);
-    }
-    .upload-zone { transition: all 0.25s ease; }
-    .upload-zone:hover { border-color: #3b82f6; background-color: #eff6ff; }
-    .spinner {
-      border: 3px solid #dbeafe;
-      border-top: 3px solid #2563eb;
-      border-radius: 50%;
-      width: 20px; height: 20px;
-      animation: spin 0.8s linear infinite;
-      display: inline-block;
-      vertical-align: middle;
-      margin-right: 8px;
-    }
+    .btn-primary { background: linear-gradient(135deg, #2563eb, #3b82f6); transition: all .2s ease; }
+    .btn-primary:hover { background: linear-gradient(135deg, #1d4ed8, #2563eb); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(37,99,235,.35); }
+    .spinner { border: 3px solid #dbeafe; border-top: 3px solid #2563eb; border-radius: 50%; width: 20px; height: 20px; animation: spin .8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .fade-in { animation: fadeIn 0.3s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
-
+    .fade-in { animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     input, select, textarea, button { font-size: 16px; }
     details > summary { list-style: none; }
     details > summary::-webkit-details-marker { display: none; }
     .apexcharts-tooltip { font-family: 'Kanit', sans-serif !important; border-radius: 10px !important; box-shadow: 0 8px 24px rgba(15,23,42,.12) !important; border: 1px solid #e2e8f0 !important; }
 
     @media (max-width: 767px) {
-      table.responsive-table td[colspan] {
-        display: block;
-        text-align: center !important;
-        padding-left: 1rem !important;
-      }
       table.responsive-table thead { display: none; }
-      table.responsive-table,
-      table.responsive-table tbody,
-      table.responsive-table tr,
-      table.responsive-table td {
-        display: block;
-        width: 100%;
-      }
-      table.responsive-table tr {
-        margin-bottom: 12px;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        overflow: hidden;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-        background: #fff !important;
-      }
-      table.responsive-table td {
-        text-align: right !important;
-        padding: 10px 14px !important;
-        border-bottom: 1px solid #f1f5f9 !important;
-        position: relative;
-        padding-left: 45% !important;
-        min-height: 20px;
-      }
+      table.responsive-table, table.responsive-table tbody, table.responsive-table tr, table.responsive-table td { display: block; width: 100%; }
+      table.responsive-table tr { margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.04); background: #fff !important; }
+      table.responsive-table td { text-align: right !important; padding: 10px 14px !important; border-bottom: 1px solid #f1f5f9 !important; position: relative; padding-left: 45% !important; min-height: 20px; }
       table.responsive-table td:last-child { border-bottom: none !important; }
-      table.responsive-table td::before {
-        content: attr(data-label);
-        position: absolute;
-        left: 14px;
-        top: 10px;
-        font-weight: 600;
-        color: #64748b;
-        text-align: left;
-        font-size: 0.8rem;
-      }
-      table.responsive-table td.cell-clinic {
-        background: linear-gradient(135deg, #eff6ff, #dbeafe);
-        font-weight: 700;
-        color: #1e3a8a;
-        font-size: 1rem;
-      }
+      table.responsive-table td::before { content: attr(data-label); position: absolute; left: 14px; top: 10px; font-weight: 600; color: #64748b; text-align: left; font-size: .8rem; }
+      table.responsive-table td.cell-clinic { background: linear-gradient(135deg, #eff6ff, #dbeafe); font-weight: 700; color: #1e3a8a; font-size: 1rem; }
       table.responsive-table td.cell-clinic::before { content: none; }
-      table.responsive-table td[colspan] { padding-left: 1rem !important; text-align: center !important; }
+      table.responsive-table td[colspan] { display: block; text-align: center !important; padding-left: 1rem !important; }
+      table.responsive-table td[colspan]::before { content: none; }
     }
   </style>
 </head>
@@ -136,8 +55,7 @@
   <div class="header-gradient shadow-lg">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-center">
       <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-2 sm:gap-3 leading-snug">
-        <span class="text-2xl sm:text-3xl">🏥</span>
-        <span>ระบบรายงานผลการลงข้อมูลแพทย์</span>
+        <span class="text-2xl sm:text-3xl">🏥</span><span>ระบบรายงานผลการลงข้อมูลแพทย์</span>
       </h1>
       <p class="text-blue-100 text-xs sm:text-sm mt-2">ติดตามและตรวจสอบสถานะการลงข้อมูลผู้ป่วยรายแพทย์</p>
     </div>
@@ -146,267 +64,82 @@
   <div class="max-w-6xl mx-auto p-3 sm:p-4 md:p-6 -mt-4 sm:-mt-6">
     <div class="bg-white rounded-2xl shadow-xl p-3 sm:p-4 md:p-8">
 
-      <!-- Tabs Menu -->
-      <div class="flex border-b mb-4 sm:mb-6 gap-1 sm:gap-2">
-        <button id="tab-report" class="tab-btn tab-active flex-1 sm:flex-none text-center py-2.5 sm:py-3 px-2 sm:px-5 rounded-t-lg text-xs sm:text-base" onclick="switchTab('report')">
-          📊 <span class="hidden xs:inline">ดูรายงาน</span><span class="xs:hidden">รายงาน</span>
-        </button>
-        <button id="tab-upload" class="tab-btn text-gray-500 hover:text-blue-600 flex-1 sm:flex-none text-center py-2.5 sm:py-3 px-2 sm:px-5 rounded-t-lg text-xs sm:text-base" onclick="switchTab('upload')">
-          📤 <span class="hidden xs:inline">อัปโหลดข้อมูล (CSV)</span><span class="xs:hidden">อัปโหลด</span>
-        </button>
+      <div id="data-availability-report" class="mb-4 sm:mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-indigo-900 flex items-start gap-2">
+        <span class="text-base sm:text-lg leading-none">ℹ️</span>
+        <div id="data-availability-report-content" class="leading-relaxed">กำลังตรวจสอบข้อมูลในระบบ...</div>
       </div>
 
-      <!-- TAB 1: ดูรายงาน -->
-      <div id="content-report">
-        <div id="data-availability-report" class="mb-4 sm:mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-indigo-900 flex items-start gap-2">
-          <span class="text-base sm:text-lg leading-none">ℹ️</span>
-          <div id="data-availability-report-content" class="leading-relaxed">กำลังตรวจสอบข้อมูลในระบบ...</div>
+      <!-- ฟิลเตอร์ -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6 bg-gradient-to-br from-slate-50 to-blue-50 p-3 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
+        <div>
+          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
+          <input type="date" id="start-date" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
         </div>
-
-        <!-- ฟิลเตอร์ -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6 bg-gradient-to-br from-slate-50 to-blue-50 p-3 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
-          <div class="col-span-1">
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
-            <input type="date" id="start-date" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
-          </div>
-          <div class="col-span-1">
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
-            <input type="date" id="end-date" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
-          </div>
-          <div class="col-span-1">
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. แพทย์</label>
-            <input type="text" id="filter-doccode" placeholder="เช่น 27447" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
-          </div>
-          <div class="col-span-1">
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 เลือกคลินิก</label>
-            <select id="filter-clinic" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition">
-              <option value="">-- ทุกคลินิก --</option>
-            </select>
-          </div>
-          <div class="col-span-2 md:col-span-1 flex items-end">
-            <button onclick="fetchReport()" class="btn-primary w-full text-white font-bold py-2.5 sm:py-2.5 px-4 rounded-lg shadow text-sm sm:text-base">
-              🔍 ค้นหาข้อมูล
-            </button>
-          </div>
+        <div>
+          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
+          <input type="date" id="end-date" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
         </div>
-
-        <!-- สรุปตัวเลข -->
-        <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-5 sm:mb-6 text-center">
-          <div class="card-hover bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 sm:p-5 rounded-xl border border-blue-200 shadow-sm">
-            <p class="text-[10px] sm:text-sm text-blue-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight">
-              <span>📋</span><span>เคสตรวจทั้งหมด</span>
-            </p>
-            <h3 class="text-lg sm:text-3xl font-bold text-blue-800 mt-1" id="sum-total">0</h3>
-          </div>
-          <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-2.5 sm:p-5 rounded-xl border border-green-200 shadow-sm">
-            <p class="text-[10px] sm:text-sm text-green-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight">
-              <span>✅</span><span>ลงข้อมูลแล้ว</span>
-            </p>
-            <h3 class="text-lg sm:text-3xl font-bold text-green-800 mt-1" id="sum-completed">0</h3>
-          </div>
-          <div class="card-hover bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 sm:p-5 rounded-xl border border-purple-200 shadow-sm">
-            <p class="text-[10px] sm:text-sm text-purple-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight">
-              <span>📈</span><span>อัตราความสำเร็จ</span>
-            </p>
-            <h3 class="text-lg sm:text-3xl font-bold text-purple-800 mt-1" id="sum-percent">0.0%</h3>
-          </div>
+        <div>
+          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. แพทย์</label>
+          <input type="text" id="filter-doccode" placeholder="เช่น 27447" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
         </div>
-
-        <!-- ===== EXECUTIVE SECTION ===== -->
-        <div id="exec-section" class="hidden space-y-4 sm:space-y-5 mb-6 fade-in">
-
-          <div class="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 class="text-base sm:text-lg font-semibold text-slate-800">📈 ภาพรวมสำหรับผู้บริหาร</h2>
-              <p id="exec-subtitle" class="text-xs text-slate-500 mt-0.5"></p>
-            </div>
-            <div class="flex flex-wrap items-end gap-2">
-              <div>
-                <label class="block text-[11px] text-slate-500 mb-1">เกณฑ์ % ลงข้อมูล</label>
-                <select id="exec-threshold" onchange="renderExecutive()" class="p-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-300">
-                  <option value="50">ต่ำกว่า 50%</option>
-                  <option value="70">ต่ำกว่า 70%</option>
-                  <option value="80" selected>ต่ำกว่า 80%</option>
-                  <option value="90">ต่ำกว่า 90%</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-[11px] text-slate-500 mb-1">เคสขั้นต่ำ/แพทย์</label>
-                <select id="exec-mincases" onchange="renderExecutive()" class="p-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-300">
-                  <option value="1">≥ 1 เคส</option>
-                  <option value="5" selected>≥ 5 เคส</option>
-                  <option value="10">≥ 10 เคส</option>
-                  <option value="20">≥ 20 เคส</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-[11px] text-slate-500 mb-1">เรียงคลินิกตาม</label>
-                <select id="exec-clinic-sort" onchange="renderExecutive()" class="p-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-300">
-                  <option value="pct-asc" selected>% ต่ำ → สูง</option>
-                  <option value="backlog-desc">เคสค้างมาก → น้อย</option>
-                  <option value="total-desc">เคสทั้งหมดมาก → น้อย</option>
-                </select>
-              </div>
-              <button onclick="exportExecExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-3 rounded-lg shadow-sm transition">
-                📊 Excel ผู้บริหาร
-              </button>
-            </div>
-          </div>
-
-          <!-- KPI -->
-          <div id="exec-kpis" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
-
-          <!-- กราฟ -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 sm:p-4">
-              <h3 class="text-sm font-semibold text-slate-700">แนวโน้มรายวัน</h3>
-              <p class="text-[11px] text-slate-400 mb-2">เคสทั้งหมด / ลงข้อมูลแล้ว / % สำเร็จ</p>
-              <div id="chart-trend"></div>
-            </div>
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 sm:p-4">
-              <h3 class="text-sm font-semibold text-slate-700">% ลงข้อมูลรายคลินิก</h3>
-              <p class="text-[11px] text-slate-400 mb-2">เขียว = ผ่านเกณฑ์ · เหลือง = ใกล้เกณฑ์ · แดง = ต่ำกว่า 50%</p>
-              <div id="chart-clinic"></div>
-            </div>
-          </div>
-
-          <!-- ตารางรายคลินิก -->
-          <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-slate-100">
-              <h3 class="text-sm font-semibold text-slate-700">🏥 เปรียบเทียบรายคลินิก</h3>
-            </div>
-            <div class="overflow-x-auto max-h-[420px] overflow-y-auto">
-              <table class="min-w-full responsive-table">
-                <thead class="bg-slate-50 text-slate-500 text-xs">
-                  <tr>
-                    <th class="py-2.5 px-4 text-left font-medium">คลินิก</th>
-                    <th class="py-2.5 px-4 text-right font-medium">แพทย์ (คน)</th>
-                    <th class="py-2.5 px-4 text-right font-medium">รวม (เคส)</th>
-                    <th class="py-2.5 px-4 text-right font-medium">เสร็จ (เคส)</th>
-                    <th class="py-2.5 px-4 text-right font-medium">ค้างลง (เคส)</th>
-                    <th class="py-2.5 px-4 text-right font-medium">% สำเร็จ</th>
-                    <th class="py-2.5 px-4 text-right font-medium">เทียบช่วงก่อน</th>
-                  </tr>
-                </thead>
-                <tbody id="exec-clinic-body" class="text-xs sm:text-sm divide-y divide-slate-100"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- ตารางแพทย์ที่ต้องติดตาม -->
-          <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 class="text-sm font-semibold text-slate-700">🚩 แพทย์ที่ควรติดตาม</h3>
-                <p id="exec-watch-summary" class="text-[11px] text-slate-500 mt-0.5"></p>
-              </div>
-              <button id="exec-watch-toggle" onclick="toggleWatchAll()" class="hidden text-xs text-blue-600 hover:text-blue-700 font-medium"></button>
-            </div>
-            <div class="overflow-x-auto max-h-[460px] overflow-y-auto">
-              <table class="min-w-full responsive-table">
-                <thead class="bg-slate-50 text-slate-500 text-xs">
-                  <tr>
-                    <th class="py-2.5 px-4 text-left font-medium">คลินิก</th>
-                    <th class="py-2.5 px-4 text-center font-medium">เลข ว.</th>
-                    <th class="py-2.5 px-4 text-left font-medium">ชื่อแพทย์</th>
-                    <th class="py-2.5 px-4 text-right font-medium">รวม (เคส)</th>
-                    <th class="py-2.5 px-4 text-right font-medium">ค้างลง (เคส)</th>
-                    <th class="py-2.5 px-4 text-right font-medium">% สำเร็จ</th>
-                    <th class="py-2.5 px-4 text-center font-medium">สถานะ</th>
-                  </tr>
-                </thead>
-                <tbody id="exec-watch-body" class="text-xs sm:text-sm divide-y divide-slate-100"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- ตารางรายวัน (พับได้) -->
-          <details class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden group">
-            <summary class="px-4 py-3 cursor-pointer select-none text-sm font-semibold text-slate-700 flex items-center justify-between hover:bg-slate-50">
-              <span>📅 ตารางสรุปรายวัน</span>
-              <span class="text-xs text-slate-400 font-normal group-open:hidden">คลิกเพื่อขยาย</span>
-            </summary>
-            <div class="overflow-x-auto max-h-[420px] overflow-y-auto border-t border-slate-100">
-              <table class="min-w-full responsive-table">
-                <thead class="bg-slate-50 text-slate-500 text-xs">
-                  <tr>
-                    <th class="py-2.5 px-4 text-left font-medium">วันที่</th>
-                    <th class="py-2.5 px-4 text-right font-medium">รวม (เคส)</th>
-                    <th class="py-2.5 px-4 text-right font-medium">เสร็จ (เคส)</th>
-                    <th class="py-2.5 px-4 text-right font-medium">ค้างลง (เคส)</th>
-                    <th class="py-2.5 px-4 text-right font-medium">% สำเร็จ</th>
-                    <th class="py-2.5 px-4 text-center font-medium">สถานะ</th>
-                  </tr>
-                </thead>
-                <tbody id="exec-daily-body" class="text-xs sm:text-sm divide-y divide-slate-100"></tbody>
-              </table>
-            </div>
-          </details>
+        <div>
+          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 เลือกคลินิก</label>
+          <select id="filter-clinic" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 outline-none transition">
+            <option value="">-- ทุกคลินิก --</option>
+          </select>
         </div>
-        <!-- ===== END EXECUTIVE SECTION ===== -->
-
-        <!-- แถบ Export -->
-        <div id="export-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 mb-3">
-          <p class="text-xs sm:text-sm text-gray-500">พบข้อมูลทั้งหมด <span id="result-count" class="font-bold text-gray-700">0</span> รายการ</p>
-          <div class="flex gap-2 w-full sm:w-auto">
-            <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition flex items-center justify-center gap-1">
-              📊 Export Excel
-            </button>
-            <button onclick="exportPDF()" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition flex items-center justify-center gap-1">
-              📄 Export PDF
-            </button>
-          </div>
-        </div>
-
-        <!-- ตารางรายแพทย์ (เดิม) -->
-        <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm max-h-[500px] overflow-y-auto">
-          <table class="min-w-full bg-white responsive-table">
-            <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white text-xs sm:text-sm">
-              <tr>
-                <th class="py-3 px-4 border-b border-slate-600 text-left">คลินิก</th>
-                <th class="py-3 px-4 border-b border-slate-600">เลข ว.</th>
-                <th class="py-3 px-4 border-b border-slate-600 text-left">ชื่อแพทย์</th>
-                <th class="py-3 px-4 border-b border-slate-600 text-right">รวม (เคส)</th>
-                <th class="py-3 px-4 border-b border-slate-600 text-right">เสร็จ (เคส)</th>
-                <th class="py-3 px-4 border-b border-slate-600 text-right">% ความสำเร็จ</th>
-              </tr>
-            </thead>
-            <tbody id="report-table-body" class="text-center text-xs sm:text-sm divide-y divide-gray-100">
-              <tr><td colspan="6" class="py-8 text-gray-400">👆 กรุณาเลือกวันที่และกดค้นหา</td></tr>
-            </tbody>
-          </table>
+        <div class="col-span-2 md:col-span-1 flex items-end">
+          <button onclick="fetchReport()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-lg shadow text-sm sm:text-base">🔍 ค้นหาข้อมูล</button>
         </div>
       </div>
 
-      <!-- TAB 2: อัปโหลดข้อมูล -->
-      <div id="content-upload" class="hidden fade-in">
-        <div id="data-availability-upload" class="mb-4 sm:mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-indigo-900 flex items-start gap-2">
-          <span class="text-base sm:text-lg leading-none">ℹ️</span>
-          <div id="data-availability-upload-content" class="leading-relaxed">กำลังตรวจสอบข้อมูลในระบบ...</div>
+      <!-- สรุปตัวเลข -->
+      <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-5 sm:mb-6 text-center">
+        <div class="card-hover bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 sm:p-5 rounded-xl border border-blue-200 shadow-sm">
+          <p class="text-[10px] sm:text-sm text-blue-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>📋</span><span>เคสตรวจทั้งหมด</span></p>
+          <h3 class="text-lg sm:text-3xl font-bold text-blue-800 mt-1" id="sum-total">0</h3>
         </div>
-
-        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-5 sm:mb-6 rounded-r-lg shadow-sm">
-          <p class="text-xs sm:text-sm text-yellow-800">
-            <strong>💡 คำแนะนำ:</strong> ให้ Export ข้อมูลจาก MS SQL Server (ชุดที่สรุปยอดแล้ว) ออกมาเป็นไฟล์ <code class="bg-yellow-100 px-1.5 py-0.5 rounded">.csv</code> จากนั้นเลือกไฟล์และกดอัปโหลด ระบบจะบันทึกข้อมูลเข้าฐานข้อมูลให้อัตโนมัติ
-          </p>
+        <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-2.5 sm:p-5 rounded-xl border border-green-200 shadow-sm">
+          <p class="text-[10px] sm:text-sm text-green-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>✅</span><span>ลงข้อมูลแล้ว</span></p>
+          <h3 class="text-lg sm:text-3xl font-bold text-green-800 mt-1" id="sum-completed">0</h3>
         </div>
-
-        <div class="upload-zone border-2 border-dashed border-gray-300 rounded-2xl p-6 sm:p-12 text-center bg-gray-50">
-          <div class="text-4xl sm:text-5xl mb-3">📁</div>
-          <input type="file" id="csv-file" accept=".csv" class="hidden" onchange="updateFileName()">
-          <label for="csv-file" class="cursor-pointer bg-white border border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-800 font-semibold py-2.5 px-6 rounded-lg inline-block mb-3 shadow-sm transition w-full sm:w-auto text-sm sm:text-base">
-            เลือกไฟล์ CSV
-          </label>
-          <p id="file-name" class="text-gray-500 text-xs sm:text-sm mb-5 break-all px-2">ยังไม่ได้เลือกไฟล์</p>
-
-          <button onclick="processAndUploadCSV()" id="upload-btn" class="btn-success text-white font-bold py-2.5 px-6 sm:px-8 rounded-lg shadow hidden w-full sm:w-auto text-sm sm:text-base">
-            🚀 เริ่มอัปโหลดเข้าฐานข้อมูล
-          </button>
+        <div class="card-hover bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 sm:p-5 rounded-xl border border-purple-200 shadow-sm">
+          <p class="text-[10px] sm:text-sm text-purple-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>📈</span><span>อัตราความสำเร็จ</span></p>
+          <h3 class="text-lg sm:text-3xl font-bold text-purple-800 mt-1" id="sum-percent">0.0%</h3>
         </div>
-
-        <div id="upload-status" class="mt-6 text-center text-sm sm:text-lg font-semibold hidden bg-gray-50 py-4 rounded-xl px-2"></div>
       </div>
 
+      <!-- ส่วนผู้บริหาร (สร้างด้วย buildExecShell()) -->
+      <div id="exec-section" class="hidden space-y-4 sm:space-y-5 mb-6 fade-in"></div>
+
+      <!-- แถบ Export -->
+      <div id="export-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 mb-3">
+        <p class="text-xs sm:text-sm text-gray-500">พบข้อมูลทั้งหมด <span id="result-count" class="font-bold text-gray-700">0</span> รายการ</p>
+        <div class="flex gap-2 w-full sm:w-auto">
+          <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📊 Export Excel</button>
+          <button onclick="exportPDF()" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📄 Export PDF</button>
+        </div>
+      </div>
+
+      <!-- ตารางรายแพทย์ -->
+      <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm max-h-[500px] overflow-y-auto">
+        <table class="min-w-full bg-white responsive-table">
+          <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white text-xs sm:text-sm">
+            <tr>
+              <th class="py-3 px-4 border-b border-slate-600 text-left">คลินิก</th>
+              <th class="py-3 px-4 border-b border-slate-600">เลข ว.</th>
+              <th class="py-3 px-4 border-b border-slate-600 text-left">ชื่อแพทย์</th>
+              <th class="py-3 px-4 border-b border-slate-600 text-right">รวม (เคส)</th>
+              <th class="py-3 px-4 border-b border-slate-600 text-right">เสร็จ (เคส)</th>
+              <th class="py-3 px-4 border-b border-slate-600 text-right">% ความสำเร็จ</th>
+            </tr>
+          </thead>
+          <tbody id="report-table-body" class="text-center text-xs sm:text-sm divide-y divide-gray-100">
+            <tr><td colspan="6" class="py-8 text-gray-400">👆 กรุณาเลือกวันที่และกดค้นหา</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="text-center text-[11px] sm:text-xs text-gray-400 mt-5 pb-2">
@@ -415,32 +148,35 @@
   </div>
 
   <script>
+    // =====================================================================
+    //  CONFIG
+    // =====================================================================
     const SUPABASE_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8';
-
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    let lastReportData = null;
 
-    // ---------- Utilities ----------
+    // =====================================================================
+    //  UTILITIES
+    // =====================================================================
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const pctOf = (c, t) => (t > 0 ? (c / t) * 100 : 0);
     const THAI_DOW = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+    const DOW_NAMES = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+    const DOW_ORDER = [1, 2, 3, 4, 5, 6, 0];
+    const MEDALS = ['🥇', '🥈', '🥉'];
     const CHART_FONT = 'Kanit, sans-serif';
+    const dowOf = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay();
 
-    function addDays(iso, n) {
-      const d = new Date(iso + 'T00:00:00Z');
-      d.setUTCDate(d.getUTCDate() + n);
-      return d.toISOString().slice(0, 10);
-    }
-    function daysBetween(a, b) {
-      return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000) + 1;
-    }
+    function addDays(iso, n) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+    function daysBetween(a, b) { return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000) + 1; }
     function shortDate(iso) { const [, m, d] = String(iso).split('-'); return `${d}/${m}`; }
-    function fullThaiDate(iso) {
-      const dow = THAI_DOW[new Date(iso + 'T00:00:00Z').getUTCDay()];
-      return `${dow} ${toThaiDateDisplay(iso)}`;
+    function toThaiDateDisplay(iso) {
+      if (!iso) return '-';
+      const [y, m, d] = String(iso).slice(0, 10).split('-');
+      return `${d}/${m}/${parseInt(y, 10) + 543}`;
     }
+    function fullThaiDate(iso) { return `${THAI_DOW[dowOf(iso)]} ${toThaiDateDisplay(iso)}`; }
 
     // ดึงข้อมูลทั้งหมดแบบแบ่งหน้า (หลีกเลี่ยงลิมิต 1,000 แถวของ Supabase)
     async function fetchAllRows(buildQuery, pageSize = 1000) {
@@ -457,89 +193,136 @@
       return all;
     }
 
-    window.onload = function() {
+    // ---------- HTML helpers ----------
+    const SEL_CLS = 'p-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-300';
+    const sel = (id, fn, opts, def) => `<select id="${id}" onchange="${fn}" class="${SEL_CLS}">${opts.map(([v, t]) => `<option value="${v}"${String(v) === String(def) ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
+    const field = (label, html) => `<div><label class="block text-[11px] text-slate-500 mb-1">${label}</label>${html}</div>`;
+    const card = (inner) => `<div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">${inner}</div>`;
+    const cardHead = (title, sub = '', tools = '') => `<div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-end justify-between gap-3"><div><h3 class="text-sm font-semibold text-slate-700">${title}</h3>${sub}</div><div class="flex flex-wrap items-center gap-2">${tools}</div></div>`;
+    const tableHtml = (bodyId, cols, maxH = '') => `<div class="overflow-x-auto ${maxH}"><table class="min-w-full responsive-table"><thead class="bg-slate-50 text-slate-500 text-xs"><tr>${cols.map(([t, a]) => `<th class="py-2.5 px-4 text-${a || 'right'} font-medium">${t}</th>`).join('')}</tr></thead><tbody id="${bodyId}" class="text-xs sm:text-sm divide-y divide-slate-100"></tbody></table></div>`;
+    const chartCard = (title, sub, id) => card(`<div class="p-3 sm:p-4"><h3 class="text-sm font-semibold text-slate-700">${title}</h3><p class="text-[11px] text-slate-400 mb-2">${sub}</p><div id="${id}"></div></div>`);
+    const td = (label, html, cls = 'text-right tabular-nums') => `<td class="py-2.5 px-4 ${cls}" data-label="${label}">${html}</td>`;
+    const tdc = (label, html) => td(label, html, 'cell-clinic text-left font-medium text-slate-700');
+    const subP = (id, txt = '') => `<p id="${id}" class="text-[11px] text-slate-500 mt-0.5">${txt}</p>`;
+
+    // =====================================================================
+    //  โครงส่วนผู้บริหาร
+    // =====================================================================
+    function buildExecShell() {
+      $('exec-section').innerHTML = `
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-slate-800">📈 ภาพรวมสำหรับผู้บริหาร</h2>
+            <p id="exec-subtitle" class="text-xs text-slate-500 mt-0.5"></p>
+          </div>
+          <div class="flex flex-wrap items-end gap-2">
+            ${field('เกณฑ์ % ลงข้อมูล', sel('exec-threshold', 'renderExecutive()', [[50, 'ต่ำกว่า 50%'], [70, 'ต่ำกว่า 70%'], [80, 'ต่ำกว่า 80%'], [90, 'ต่ำกว่า 90%']], 80))}
+            ${field('เคสขั้นต่ำ/แพทย์', sel('exec-mincases', 'renderExecutive()', [[1, '≥ 1 เคส'], [5, '≥ 5 เคส'], [10, '≥ 10 เคส'], [20, '≥ 20 เคส']], 5))}
+            ${field('เรียงคลินิกตาม', sel('exec-clinic-sort', 'renderExecutive()', [['pct-asc', '% ต่ำ → สูง'], ['backlog-desc', 'เคสค้างมาก → น้อย'], ['total-desc', 'เคสทั้งหมดมาก → น้อย']], 'pct-asc'))}
+            <button onclick="exportExecExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-3 rounded-lg shadow-sm transition">📊 Excel ผู้บริหาร</button>
+          </div>
+        </div>
+
+        <div id="exec-kpis" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          ${chartCard('แนวโน้มรายวัน', 'เคสทั้งหมด / ลงข้อมูลแล้ว / % สำเร็จ', 'chart-trend')}
+          ${chartCard('% ลงข้อมูลรายคลินิก', 'เขียว = ผ่านเกณฑ์ · เหลือง = ใกล้เกณฑ์ · แดง = ต่ำกว่า 50%', 'chart-clinic')}
+        </div>
+
+        ${card(
+          cardHead('📆 อัตราการลงข้อมูลแยกตามวันในสัปดาห์', subP('exec-dow-insight')) +
+          tableHtml('exec-dow-body', [['วัน', 'left'], ['จำนวนวันที่มีข้อมูล'], ['เคสเฉลี่ย/วัน'], ['ค้างลงเฉลี่ย/วัน'], ['% สำเร็จ'], ['เทียบค่าเฉลี่ยรวม']]) +
+          '<p class="px-4 py-2 text-[11px] text-slate-400 border-t border-slate-100">💡 ควรเลือกช่วงวันที่ให้ครอบคลุมหลายสัปดาห์ (≥ 4 สัปดาห์) เพื่อให้ผลเทียบวันน่าเชื่อถือ</p>'
+        )}
+
+        ${card(
+          cardHead('🏥 เปรียบเทียบรายคลินิก') +
+          tableHtml('exec-clinic-body', [['คลินิก', 'left'], ['แพทย์ (คน)'], ['รวม (เคส)'], ['เสร็จ (เคส)'], ['ค้างลง (เคส)'], ['% สำเร็จ'], ['เทียบช่วงก่อน']], 'max-h-[420px] overflow-y-auto')
+        )}
+
+        ${card(
+          cardHead('🚩 แพทย์ที่ควรติดตาม', subP('exec-watch-summary'), '<button id="exec-watch-toggle" onclick="toggleWatchAll()" class="hidden text-xs text-blue-600 hover:text-blue-700 font-medium"></button>') +
+          tableHtml('exec-watch-body', [['คลินิก', 'left'], ['เลข ว.', 'center'], ['ชื่อแพทย์', 'left'], ['รวม (เคส)'], ['ค้างลง (เคส)'], ['% สำเร็จ'], ['สถานะ', 'center']], 'max-h-[460px] overflow-y-auto')
+        )}
+
+        ${card(
+          cardHead('🔥 Heatmap การลงข้อมูล แพทย์ × วัน', subP('exec-heat-info'),
+            sel('exec-heat-mode', 'renderHeatmap()', [['flagged', 'เฉพาะแพทย์ต่ำกว่าเกณฑ์ (เคสค้างมาก่อน)'], ['volume', 'แพทย์ที่มีเคสมากสุด']], 'flagged') +
+            sel('exec-heat-limit', 'renderHeatmap()', [[15, '15 คน'], [30, '30 คน'], [50, '50 คน']], 30)) +
+          '<div id="exec-heat-wrap" class="overflow-x-auto max-h-[520px] overflow-y-auto"></div>' +
+          `<div class="px-4 py-2 border-t border-slate-100 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+            <span class="flex items-center gap-1"><i class="inline-block w-3 h-3 rounded" style="background:#fecdd3"></i> &lt; 50%</span>
+            <span class="flex items-center gap-1"><i class="inline-block w-3 h-3 rounded" style="background:#fde68a"></i> 50% – ต่ำกว่าเกณฑ์</span>
+            <span class="flex items-center gap-1"><i class="inline-block w-3 h-3 rounded" style="background:#a7f3d0"></i> ผ่านเกณฑ์</span>
+            <span class="flex items-center gap-1"><i class="inline-block w-3 h-3 rounded" style="background:#6ee7b7"></i> 100%</span>
+            <span class="flex items-center gap-1"><i class="inline-block w-3 h-3 rounded bg-slate-100"></i> ไม่มีเคส</span>
+          </div>`
+        )}
+
+        ${card(
+          cardHead('🏆 อันดับแพทย์ดีเด่น', subP('exec-rank-sub', 'จัดอันดับเฉพาะแพทย์ที่มีเคสถึงเกณฑ์ขั้นต่ำ เพื่อความยุติธรรม'),
+            sel('exec-rank-by', 'renderRanking()', [['pct', 'ตาม % ลงข้อมูลรวม'], ['consistency', 'ตาม % วันที่ลงครบ 100% (สม่ำเสมอ)'], ['volume', 'ตามจำนวนเคสที่ลงแล้ว']], 'pct') +
+            sel('exec-rank-min', 'renderRanking()', [[10, 'เคส ≥ 10'], [20, 'เคส ≥ 20'], [50, 'เคส ≥ 50'], [100, 'เคส ≥ 100']], 20) +
+            sel('exec-rank-top', 'renderRanking()', [[10, 'Top 10'], [20, 'Top 20'], [30, 'Top 30']], 10)) +
+          '<div id="exec-rank-podium" class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 sm:p-4"></div>' +
+          '<div class="border-t border-slate-100"></div>' +
+          tableHtml('exec-rank-body', [['อันดับ', 'center'], ['ชื่อแพทย์', 'left'], ['คลินิก', 'left'], ['เลข ว.', 'center'], ['รวม (เคส)'], ['เสร็จ (เคส)'], ['% สำเร็จ'], ['วันที่มีเคส'], ['ลงครบ 100% (วัน)'], ['% วันที่ลงครบ']], 'max-h-[460px] overflow-y-auto')
+        )}
+
+        <details class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden group">
+          <summary class="px-4 py-3 cursor-pointer select-none text-sm font-semibold text-slate-700 flex items-center justify-between hover:bg-slate-50">
+            <span>📅 ตารางสรุปรายวัน</span>
+            <span class="text-xs text-slate-400 font-normal group-open:hidden">คลิกเพื่อขยาย</span>
+          </summary>
+          <div class="border-t border-slate-100">
+            ${tableHtml('exec-daily-body', [['วันที่', 'left'], ['รวม (เคส)'], ['เสร็จ (เคส)'], ['ค้างลง (เคส)'], ['% สำเร็จ'], ['สถานะ', 'center']], 'max-h-[420px] overflow-y-auto')}
+          </div>
+        </details>`;
+    }
+
+    // =====================================================================
+    //  INIT / DROPDOWN / AVAILABILITY
+    // =====================================================================
+    window.onload = function () {
+      buildExecShell();
       loadClinicDropdown();
       loadDataAvailability();
     };
 
-    function switchTab(tab) {
-      $('content-report').classList.add('hidden');
-      $('content-upload').classList.add('hidden');
-
-      $('tab-report').classList.remove('tab-active');
-      $('tab-report').classList.add('text-gray-500');
-      $('tab-upload').classList.remove('tab-active');
-      $('tab-upload').classList.add('text-gray-500');
-
-      $(`content-${tab}`).classList.remove('hidden');
-      $(`tab-${tab}`).classList.add('tab-active');
-      $(`tab-${tab}`).classList.remove('text-gray-500');
-
-      if (tab === 'report') loadClinicDropdown();
-    }
-
     async function loadClinicDropdown() {
       const clinicSelect = $('filter-clinic');
-      const previous = clinicSelect.value;
       try {
         const rows = await fetchAllRows(() =>
           supabaseClient.from('opd_summary').select('clinic')
-            .order('regist_date').order('clinic').order('doc_code').order('doc_name')
-        );
-        const clinics = [...new Set(rows.map(item => item.clinic))].sort();
-        clinicSelect.innerHTML = '<option value="">-- ทุกคลินิก --</option>';
-        clinics.forEach(clinic => {
-          const opt = document.createElement('option');
-          opt.value = clinic;
-          opt.textContent = clinic;
-          clinicSelect.appendChild(opt);
-        });
-        if (previous && clinics.includes(previous)) clinicSelect.value = previous;
-      } catch (e) {
-        console.error('loadClinicDropdown', e);
-      }
-    }
-
-    function toThaiDateDisplay(iso) {
-      if (!iso) return '-';
-      const [y, m, d] = String(iso).slice(0, 10).split('-');
-      const buddhistYear = parseInt(y, 10) + 543;
-      return `${d}/${m}/${buddhistYear}`;
+            .order('regist_date').order('clinic').order('doc_code').order('doc_name'));
+        const clinics = [...new Set(rows.map(r => r.clinic))].sort();
+        clinicSelect.innerHTML = '<option value="">-- ทุกคลินิก --</option>' +
+          clinics.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      } catch (e) { console.error('loadClinicDropdown', e); }
     }
 
     async function loadDataAvailability() {
-      const reportBox = $('data-availability-report-content');
-      const uploadBox = $('data-availability-upload-content');
-
-      reportBox.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบข้อมูลในระบบ...';
-      uploadBox.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบข้อมูลในระบบ...';
-
+      const box = $('data-availability-report-content');
+      box.innerHTML = '<span class="spinner"></span>กำลังตรวจสอบข้อมูลในระบบ...';
       try {
         const { data: minData } = await supabaseClient.from('opd_summary').select('regist_date').order('regist_date', { ascending: true }).limit(1);
         const { data: maxData } = await supabaseClient.from('opd_summary').select('regist_date').order('regist_date', { ascending: false }).limit(1);
-
-        if (!minData || minData.length === 0 || !maxData || maxData.length === 0) {
-          const emptyHtml = '⚠️ ยังไม่มีข้อมูลในระบบ กรุณาอัปโหลดไฟล์ CSV เพื่อเริ่มต้นใช้งาน';
-          reportBox.innerHTML = emptyHtml;
-          uploadBox.innerHTML = emptyHtml;
+        if (!minData || !minData.length || !maxData || !maxData.length) {
+          box.innerHTML = '⚠️ ยังไม่มีข้อมูลในระบบ (ระบบจะนำเข้าข้อมูลอัตโนมัติทุกวันเวลา 04:00 น.)';
           return;
         }
-
-        const minDate = String(minData[0].regist_date).slice(0, 10);
-        const maxDate = String(maxData[0].regist_date).slice(0, 10);
-        const html = `📅 มีข้อมูลในระบบตั้งแต่วันที่ <strong>${toThaiDateDisplay(minDate)}</strong> ถึง <strong>${toThaiDateDisplay(maxDate)}</strong>`;
-
-        reportBox.innerHTML = html;
-        uploadBox.innerHTML = html;
+        box.innerHTML = `📅 มีข้อมูลในระบบตั้งแต่วันที่ <strong>${toThaiDateDisplay(String(minData[0].regist_date).slice(0, 10))}</strong> ถึง <strong>${toThaiDateDisplay(String(maxData[0].regist_date).slice(0, 10))}</strong>`;
       } catch (err) {
-        reportBox.innerHTML = `❌ ไม่สามารถตรวจสอบข้อมูลได้`;
-        uploadBox.innerHTML = `❌ ไม่สามารถตรวจสอบข้อมูลได้`;
+        box.innerHTML = '❌ ไม่สามารถตรวจสอบข้อมูลได้';
       }
     }
 
-    // ==========================================
-    // ดูรายงาน (รวมยอดรายแพทย์ + ส่งต่อให้ส่วนผู้บริหาร)
-    // ==========================================
+    // =====================================================================
+    //  ดูรายงาน
+    // =====================================================================
+    let lastReportData = null;
+
     async function fetchReport() {
       const startDate = $('start-date').value;
       const endDate = $('end-date').value;
@@ -548,15 +331,14 @@
       const tbody = $('report-table-body');
       const exportToolbar = $('export-toolbar');
 
-      if (!startDate || !endDate) { alert("กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด"); return; }
-      if (startDate > endDate) { alert("วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด"); return; }
+      if (!startDate || !endDate) { alert('กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด'); return; }
+      if (startDate > endDate) { alert('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด'); return; }
 
       exportToolbar.classList.add('hidden');
       lastReportData = null;
-      tbody.innerHTML = `<tr><td colspan="6" class="py-8"><span class="spinner"></span>กำลังค้นหาข้อมูล...</td></tr>`;
+      tbody.innerHTML = '<tr><td colspan="6" class="py-8"><span class="spinner"></span>กำลังค้นหาข้อมูล...</td></tr>';
       showExecSkeleton();
 
-      // ช่วงก่อนหน้า (ยาวเท่ากัน) สำหรับเปรียบเทียบ
       const span = daysBetween(startDate, endDate);
       const prevEnd = addDays(startDate, -1);
       const prevStart = addDays(prevEnd, -(span - 1));
@@ -564,7 +346,7 @@
       const buildQuery = (from, to) => {
         let q = supabaseClient.from('opd_summary').select('*')
           .gte('regist_date', from).lte('regist_date', to)
-          .order('regist_date').order('clinic').order('doc_code').order('doc_name'); // ลำดับคงที่ เพื่อให้แบ่งหน้าไม่ซ้ำ/ตก
+          .order('regist_date').order('clinic').order('doc_code').order('doc_name');
         if (filterClinic) q = q.eq('clinic', filterClinic);
         if (filterDocCode) q = q.ilike('doc_code', `%${filterDocCode}%`);
         return q;
@@ -574,26 +356,21 @@
       try {
         [data, prevData] = await Promise.all([
           fetchAllRows(() => buildQuery(startDate, endDate)),
-          fetchAllRows(() => buildQuery(prevStart, prevEnd)).catch(() => []) // ช่วงก่อนหน้าพัง ไม่กระทบรายงานหลัก
+          fetchAllRows(() => buildQuery(prevStart, prevEnd)).catch(() => [])
         ]);
       } catch (error) {
         tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-red-500">❌ Error: ${esc(error.message)}</td></tr>`;
-        destroyCharts();
-        $('exec-section').classList.add('hidden');
+        destroyCharts(); $('exec-section').classList.add('hidden');
         return;
       }
 
       if (!data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-gray-500">❌ ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา</td></tr>';
-        $('sum-total').innerText = '0';
-        $('sum-completed').innerText = '0';
-        $('sum-percent').innerText = '0.0%';
-        destroyCharts();
-        $('exec-section').classList.add('hidden');
+        $('sum-total').innerText = '0'; $('sum-completed').innerText = '0'; $('sum-percent').innerText = '0.0%';
+        destroyCharts(); $('exec-section').classList.add('hidden');
         return;
       }
 
-      // รวมกลุ่มรายแพทย์ (Clinic + Doc Code)
       const aggMap = {};
       let gTotal = 0, gCompleted = 0;
       data.forEach(row => {
@@ -602,9 +379,8 @@
         aggMap[key].total += Number(row.total_cases) || 0;
         aggMap[key].completed += Number(row.completed_cases) || 0;
       });
-
       const list = Object.values(aggMap);
-      list.forEach(item => { gTotal += item.total; gCompleted += item.completed; });
+      list.forEach(i => { gTotal += i.total; gCompleted += i.completed; });
       list.sort((a, b) => a.clinic !== b.clinic ? a.clinic.localeCompare(b.clinic) : b.completed - a.completed);
 
       $('sum-total').innerText = gTotal.toLocaleString();
@@ -612,46 +388,32 @@
       const percent = gTotal > 0 ? ((gCompleted / gTotal) * 100).toFixed(1) : '0.0';
       $('sum-percent').innerText = `${percent}%`;
 
-      let html = '';
-      list.forEach((item, idx) => {
+      tbody.innerHTML = list.map((item, idx) => {
         const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
         const rowClass = pct < 50 ? 'bg-red-50 hover:bg-red-100' : (idx % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-slate-50 hover:bg-blue-50');
         const pctColor = pct < 50 ? 'text-red-600' : (pct >= 90 ? 'text-green-600' : 'text-blue-600');
-        html += `
-          <tr class="${rowClass}">
-            <td class="cell-clinic py-2.5 px-4 text-left font-medium text-gray-700" data-label="คลินิก">${esc(item.clinic)}</td>
-            <td class="py-2.5 px-4" data-label="เลข ว.">${esc(item.docId)}</td>
-            <td class="py-2.5 px-4 text-left" data-label="ชื่อแพทย์">${esc(item.docName)}</td>
-            <td class="py-2.5 px-4 text-right" data-label="รวม (เคส)">${item.total.toLocaleString()}</td>
-            <td class="py-2.5 px-4 text-right text-green-600 font-medium" data-label="เสร็จ (เคส)">${item.completed.toLocaleString()}</td>
-            <td class="py-2.5 px-4 text-right font-bold ${pctColor}" data-label="% ความสำเร็จ">${pct}%</td>
-          </tr>`;
-      });
-      tbody.innerHTML = html;
+        return `<tr class="${rowClass}">
+          <td class="cell-clinic py-2.5 px-4 text-left font-medium text-gray-700" data-label="คลินิก">${esc(item.clinic)}</td>
+          <td class="py-2.5 px-4" data-label="เลข ว.">${esc(item.docId)}</td>
+          <td class="py-2.5 px-4 text-left" data-label="ชื่อแพทย์">${esc(item.docName)}</td>
+          <td class="py-2.5 px-4 text-right" data-label="รวม (เคส)">${item.total.toLocaleString()}</td>
+          <td class="py-2.5 px-4 text-right text-green-600 font-medium" data-label="เสร็จ (เคส)">${item.completed.toLocaleString()}</td>
+          <td class="py-2.5 px-4 text-right font-bold ${pctColor}" data-label="% ความสำเร็จ">${pct}%</td>
+        </tr>`;
+      }).join('');
 
-      lastReportData = {
-        list, gTotal, gCompleted, percent, startDate, endDate,
-        filterDocCode: filterDocCode || 'ทั้งหมด',
-        filterClinicName: filterClinic || 'ทุกคลินิก'
-      };
-
+      lastReportData = { list, gTotal, gCompleted, percent, startDate, endDate };
       $('result-count').innerText = list.length.toLocaleString();
       exportToolbar.classList.remove('hidden');
 
-      // ส่งข้อมูลเข้าส่วนผู้บริหาร
       execState = { ...execState, rows: data, prevRows: prevData || [], list, startDate, endDate, prevStart, prevEnd, showAllWatch: false };
       renderExecutive();
     }
 
     // =====================================================================
-    //  EXECUTIVE DASHBOARD MODULE
+    //  EXECUTIVE MODULE
     // =====================================================================
-    let execState = {
-      rows: [], prevRows: [], list: [],
-      startDate: '', endDate: '', prevStart: '', prevEnd: '',
-      showAllWatch: false,
-      daily: [], clinics: [], flagged: [], cur: null
-    };
+    let execState = { rows: [], prevRows: [], list: [], startDate: '', endDate: '', prevStart: '', prevEnd: '', showAllWatch: false, daily: [], clinics: [], flagged: [], cur: null, docStats: null, dow: [], ranking: [] };
     let trendChart = null, clinicChart = null;
 
     function destroyCharts() {
@@ -664,13 +426,12 @@
       $('exec-section').classList.remove('hidden');
       $('exec-subtitle').textContent = 'กำลังประมวลผล...';
       $('exec-kpis').innerHTML = Array(4).fill('<div class="h-[104px] rounded-xl bg-slate-100 animate-pulse"></div>').join('');
-      ['chart-trend', 'chart-clinic'].forEach(id => {
-        $(id).innerHTML = '<div class="h-[280px] rounded-lg bg-slate-100 animate-pulse"></div>';
-      });
-      const skelRow = (cols) => `<tr><td colspan="${cols}" class="py-6 px-4"><div class="h-4 rounded bg-slate-100 animate-pulse"></div></td></tr>`;
-      $('exec-clinic-body').innerHTML = skelRow(7).repeat(3);
-      $('exec-watch-body').innerHTML = skelRow(7).repeat(3);
-      $('exec-daily-body').innerHTML = skelRow(6).repeat(3);
+      ['chart-trend', 'chart-clinic'].forEach(id => { $(id).innerHTML = '<div class="h-[280px] rounded-lg bg-slate-100 animate-pulse"></div>'; });
+      const sk = (cols) => `<tr><td colspan="${cols}" class="py-6 px-4"><div class="h-4 rounded bg-slate-100 animate-pulse"></div></td></tr>`;
+      [['exec-dow-body', 6], ['exec-clinic-body', 7], ['exec-watch-body', 7], ['exec-daily-body', 6], ['exec-rank-body', 10]]
+        .forEach(([id, c]) => { $(id).innerHTML = sk(c).repeat(3); });
+      $('exec-heat-wrap').innerHTML = '<div class="m-4 h-[220px] rounded-lg bg-slate-100 animate-pulse"></div>';
+      $('exec-rank-podium').innerHTML = Array(3).fill('<div class="h-[110px] rounded-xl bg-slate-100 animate-pulse"></div>').join('');
       $('exec-watch-summary').textContent = '';
       $('exec-watch-toggle').classList.add('hidden');
     }
@@ -701,20 +462,16 @@
     }
 
     // ---------- UI helpers ----------
-    function colorFor(pct, th) {
-      if (pct >= th) return '#10b981';   // emerald
-      if (pct >= 50) return '#f59e0b';   // amber
-      return '#f43f5e';                  // rose
-    }
+    function colorFor(pct, th) { return pct >= th ? '#10b981' : (pct >= 50 ? '#f59e0b' : '#f43f5e'); }
 
     function statusBadge(pct, th) {
-      if (pct >= th) return '<span class="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-100 text-emerald-700">ผ่านเกณฑ์</span>';
-      if (pct >= 50) return '<span class="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-100 text-amber-700">ใกล้เกณฑ์</span>';
-      return '<span class="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium bg-rose-100 text-rose-700">ต้องติดตาม</span>';
+      const b = (cls, t) => `<span class="inline-block px-2 py-0.5 rounded-md text-[11px] font-medium ${cls}">${t}</span>`;
+      if (pct >= th) return b('bg-emerald-100 text-emerald-700', 'ผ่านเกณฑ์');
+      if (pct >= 50) return b('bg-amber-100 text-amber-700', 'ใกล้เกณฑ์');
+      return b('bg-rose-100 text-rose-700', 'ต้องติดตาม');
     }
 
-    // mode: 'pp' = ผลต่างเป็น "จุด %" | 'rel' = เปลี่ยนแปลงสัมพัทธ์ (%)
-    // goodUp: true = เพิ่มขึ้นคือดี, false = ลดลงคือดี, null = เป็นกลาง (เช่น ปริมาณเคส)
+    // mode: 'pp' = ผลต่างเป็นจุด % | 'rel' = เปลี่ยนแปลงสัมพัทธ์ %  /  goodUp: true|false|null(เป็นกลาง)
     function deltaChip(cur, prev, { mode = 'pp', goodUp = true } = {}) {
       const dash = '<span class="text-slate-300 text-[11px]">–</span>';
       if (prev === null || prev === undefined || !isFinite(prev)) return dash;
@@ -725,25 +482,20 @@
       const up = diff > 0;
       let cls = 'bg-slate-100 text-slate-600';
       if (goodUp !== null) cls = (up === goodUp) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
-      const unit = mode === 'pp' ? ' จุด' : '%';
-      return `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-medium ${cls}">${up ? '▲' : '▼'} ${Math.abs(diff).toFixed(1)}${unit}</span>`;
+      return `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-medium ${cls}">${up ? '▲' : '▼'} ${Math.abs(diff).toFixed(1)}${mode === 'pp' ? ' จุด' : '%'}</span>`;
     }
 
     function pctBar(pct, th) {
       const c = colorFor(pct, th);
       return `<div class="flex items-center gap-2 justify-end">
-        <div class="hidden sm:block w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div class="h-full rounded-full" style="width:${Math.min(100, pct)}%;background:${c}"></div>
-        </div>
+        <div class="hidden sm:block w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100, pct)}%;background:${c}"></div></div>
         <span class="font-semibold tabular-nums" style="color:${c}">${pct.toFixed(1)}%</span>
       </div>`;
     }
 
     function kpiCard(icon, label, value, chip, sub) {
       return `<div class="bg-white border border-slate-200 rounded-xl shadow-sm p-3 sm:p-4">
-        <div class="flex items-center justify-between gap-2">
-          <p class="text-[11px] sm:text-xs text-slate-500 font-medium">${icon} ${label}</p>${chip}
-        </div>
+        <div class="flex items-center justify-between gap-2"><p class="text-[11px] sm:text-xs text-slate-500 font-medium">${icon} ${label}</p>${chip}</div>
         <p class="text-xl sm:text-2xl font-semibold text-slate-800 mt-2 tabular-nums">${value}</p>
         <p class="text-[11px] text-slate-400 mt-1">${sub}</p>
       </div>`;
@@ -753,7 +505,6 @@
     function renderExecutive() {
       const s = execState;
       if (!s.rows.length) return;
-
       const th = Number($('exec-threshold').value);
       const minC = Number($('exec-mincases').value);
       const sortBy = $('exec-clinic-sort').value;
@@ -762,48 +513,32 @@
       const prev = s.prevRows.length ? summarize(s.prevRows) : null;
       s.cur = cur;
 
-      // แพทย์ที่ต่ำกว่าเกณฑ์ (เรียงตามจำนวนเคสค้างมากสุด)
       s.flagged = s.list
         .filter(d => d.total >= minC && pctOf(d.completed, d.total) < th)
         .map(d => ({ ...d, backlog: d.total - d.completed, pct: pctOf(d.completed, d.total) }))
         .sort((a, b) => b.backlog - a.backlog || a.pct - b.pct);
       const eligible = s.list.filter(d => d.total >= minC).length;
 
-      const span = daysBetween(s.startDate, s.endDate);
       $('exec-subtitle').innerHTML =
-        `${toThaiDateDisplay(s.startDate)} – ${toThaiDateDisplay(s.endDate)} (${span} วัน) · ` +
+        `${toThaiDateDisplay(s.startDate)} – ${toThaiDateDisplay(s.endDate)} (${daysBetween(s.startDate, s.endDate)} วัน) · ` +
         (prev ? `เทียบกับ ${toThaiDateDisplay(s.prevStart)} – ${toThaiDateDisplay(s.prevEnd)}` : 'ไม่มีข้อมูลช่วงก่อนหน้าสำหรับเปรียบเทียบ');
 
-      // KPI
       const avgPerDay = cur.days > 0 ? (cur.total / cur.days).toFixed(1) : '0.0';
       $('exec-kpis').innerHTML = [
-        kpiCard('📋', 'เคสตรวจทั้งหมด', cur.total.toLocaleString(),
-          deltaChip(cur.total, prev ? prev.total : null, { mode: 'rel', goodUp: null }),
-          `เฉลี่ย ${avgPerDay} เคส/วัน · ${cur.days} วันที่มีข้อมูล`),
-        kpiCard('✅', 'อัตราการลงข้อมูล', `${cur.pct.toFixed(1)}%`,
-          deltaChip(cur.pct, prev ? prev.pct : null, { mode: 'pp', goodUp: true }),
-          `ลงแล้ว ${cur.completed.toLocaleString()} เคส`),
-        kpiCard('⏳', 'เคสค้างลงข้อมูล', cur.backlog.toLocaleString(),
-          deltaChip(cur.backlog, prev ? prev.backlog : null, { mode: 'rel', goodUp: false }),
-          `จากแพทย์ ${cur.doctors.toLocaleString()} คน`),
-        kpiCard('🚩', `แพทย์ต่ำกว่า ${th}%`, s.flagged.length.toLocaleString(), '',
-          `จาก ${eligible.toLocaleString()} คน (เคส ≥ ${minC})`)
+        kpiCard('📋', 'เคสตรวจทั้งหมด', cur.total.toLocaleString(), deltaChip(cur.total, prev && prev.total, { mode: 'rel', goodUp: null }), `เฉลี่ย ${avgPerDay} เคส/วัน · ${cur.days} วันที่มีข้อมูล`),
+        kpiCard('✅', 'อัตราการลงข้อมูล', `${cur.pct.toFixed(1)}%`, deltaChip(cur.pct, prev && prev.pct, { mode: 'pp', goodUp: true }), `ลงแล้ว ${cur.completed.toLocaleString()} เคส`),
+        kpiCard('⏳', 'เคสค้างลงข้อมูล', cur.backlog.toLocaleString(), deltaChip(cur.backlog, prev && prev.backlog, { mode: 'rel', goodUp: false }), `จากแพทย์ ${cur.doctors.toLocaleString()} คน`),
+        kpiCard('🚩', `แพทย์ต่ำกว่า ${th}%`, s.flagged.length.toLocaleString(), '', `จาก ${eligible.toLocaleString()} คน (เคส ≥ ${minC})`)
       ].join('');
 
-      // รายวัน
       s.daily = [...groupBy(s.rows, r => String(r.regist_date).slice(0, 10)).values()]
         .map(d => ({ date: d.key, total: d.total, completed: d.completed, backlog: d.total - d.completed, pct: pctOf(d.completed, d.total) }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-      // รายคลินิก
       const prevMap = groupBy(s.prevRows, r => r.clinic);
       s.clinics = [...groupBy(s.rows, r => r.clinic).values()].map(c => {
         const p = prevMap.get(c.key);
-        return {
-          name: c.key, docs: c.docs.size, total: c.total, completed: c.completed,
-          backlog: c.total - c.completed, pct: pctOf(c.completed, c.total),
-          prevPct: p && p.total > 0 ? pctOf(p.completed, p.total) : null
-        };
+        return { name: c.key, docs: c.docs.size, total: c.total, completed: c.completed, backlog: c.total - c.completed, pct: pctOf(c.completed, c.total), prevPct: p && p.total > 0 ? pctOf(p.completed, p.total) : null };
       });
       const sorters = {
         'pct-asc': (a, b) => a.pct - b.pct || b.backlog - a.backlog,
@@ -812,18 +547,23 @@
       };
       s.clinics.sort(sorters[sortBy] || sorters['pct-asc']);
 
-      renderTrendChart(th);
+      renderTrendChart();
       renderClinicChart(th);
       renderClinicTable(th);
       renderWatchlist();
       renderDailyTable(th);
+      buildDoctorStats();
+      renderDow(th);
+      renderHeatmap();
+      renderRanking();
     }
 
-    function renderTrendChart(th) {
+    // ---------- Charts ----------
+    function renderTrendChart() {
       const d = execState.daily;
       if (trendChart) { trendChart.destroy(); trendChart = null; }
       $('chart-trend').innerHTML = '';
-
+      const axisLbl = { style: { colors: '#94a3b8', fontSize: '11px' } };
       trendChart = new ApexCharts($('chart-trend'), {
         chart: { type: 'line', height: 300, fontFamily: CHART_FONT, toolbar: { show: false }, zoom: { enabled: false } },
         series: [
@@ -833,23 +573,18 @@
         ],
         colors: ['#3b82f6', '#10b981', '#f59e0b'],
         stroke: { curve: 'smooth', width: [2, 2, 2.5], dashArray: [0, 0, 4] },
-        fill: {
-          type: ['gradient', 'gradient', 'solid'],
-          gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.02, stops: [0, 95, 100] }
-        },
+        fill: { type: ['gradient', 'gradient', 'solid'], gradient: { shadeIntensity: 1, opacityFrom: .25, opacityTo: .02, stops: [0, 95, 100] } },
         markers: { size: d.length <= 31 ? 3 : 0, strokeWidth: 0, hover: { sizeOffset: 2 } },
         dataLabels: { enabled: false },
         xaxis: {
-          categories: d.map(x => x.date),
-          tickAmount: Math.min(d.length, 10),
-          axisBorder: { show: false }, axisTicks: { show: false },
-          labels: { rotate: 0, hideOverlappingLabels: true, style: { colors: '#94a3b8', fontSize: '11px' }, formatter: v => shortDate(String(v)) },
-          tooltip: { enabled: false }
+          categories: d.map(x => x.date), tickAmount: Math.min(d.length, 10),
+          axisBorder: { show: false }, axisTicks: { show: false }, tooltip: { enabled: false },
+          labels: { ...axisLbl, rotate: 0, hideOverlappingLabels: true, formatter: v => shortDate(String(v)) }
         },
         yaxis: [
-          { seriesName: 'เคสทั้งหมด', min: 0, labels: { style: { colors: '#94a3b8', fontSize: '11px' }, formatter: v => Math.round(v).toLocaleString() } },
+          { seriesName: 'เคสทั้งหมด', min: 0, labels: { ...axisLbl, formatter: v => Math.round(v).toLocaleString() } },
           { seriesName: 'เคสทั้งหมด', show: false },
-          { opposite: true, min: 0, max: 100, tickAmount: 5, labels: { style: { colors: '#94a3b8', fontSize: '11px' }, formatter: v => `${Math.round(v)}%` } }
+          { opposite: true, min: 0, max: 100, tickAmount: 5, labels: { ...axisLbl, formatter: v => `${Math.round(v)}%` } }
         ],
         grid: { borderColor: '#f1f5f9', strokeDashArray: 4, xaxis: { lines: { show: false } } },
         legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px', markers: { radius: 12 } },
@@ -866,7 +601,6 @@
       const c = execState.clinics;
       if (clinicChart) { clinicChart.destroy(); clinicChart = null; }
       $('chart-clinic').innerHTML = '';
-
       clinicChart = new ApexCharts($('chart-clinic'), {
         chart: { type: 'bar', height: Math.max(280, c.length * 32 + 60), fontFamily: CHART_FONT, toolbar: { show: false } },
         series: [{ name: '% ลงข้อมูล', data: c.map(x => Number(x.pct.toFixed(1))) }],
@@ -874,22 +608,19 @@
         plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 4, barHeight: '62%' } },
         dataLabels: { enabled: true, formatter: v => `${Number(v).toFixed(1)}%`, style: { fontSize: '11px', fontWeight: 500 } },
         legend: { show: false },
-        xaxis: {
-          categories: c.map(x => x.name), min: 0, max: 100, tickAmount: 5,
-          axisBorder: { show: false }, axisTicks: { show: false },
-          labels: { style: { colors: '#94a3b8', fontSize: '11px' }, formatter: v => `${Math.round(v)}%` }
-        },
+        xaxis: { categories: c.map(x => x.name), min: 0, max: 100, tickAmount: 5, axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: '#94a3b8', fontSize: '11px' }, formatter: v => `${Math.round(v)}%` } },
         yaxis: { labels: { maxWidth: 160, style: { colors: '#475569', fontSize: '12px' } } },
         grid: { borderColor: '#f1f5f9', strokeDashArray: 4, yaxis: { lines: { show: false } } },
         tooltip: {
           custom: ({ dataPointIndex }) => {
             const x = c[dataPointIndex];
+            const line = (l, v) => `<div class="flex justify-between gap-4 text-slate-500"><span>${l}</span>${v}</div>`;
             return `<div class="px-3 py-2 text-xs" style="min-width:170px">
               <div class="font-semibold text-slate-800 mb-1">${esc(x.name)}</div>
-              <div class="flex justify-between gap-4 text-slate-500"><span>% ลงข้อมูล</span><b style="color:${colorFor(x.pct, th)}">${x.pct.toFixed(1)}%</b></div>
-              <div class="flex justify-between gap-4 text-slate-500"><span>เคสทั้งหมด</span><b class="text-slate-700">${x.total.toLocaleString()}</b></div>
-              <div class="flex justify-between gap-4 text-slate-500"><span>ค้างลง</span><b class="text-rose-500">${x.backlog.toLocaleString()}</b></div>
-              <div class="flex justify-between gap-4 text-slate-500"><span>แพทย์</span><b class="text-slate-700">${x.docs} คน</b></div>
+              ${line('% ลงข้อมูล', `<b style="color:${colorFor(x.pct, th)}">${x.pct.toFixed(1)}%</b>`)}
+              ${line('เคสทั้งหมด', `<b class="text-slate-700">${x.total.toLocaleString()}</b>`)}
+              ${line('ค้างลง', `<b class="text-rose-500">${x.backlog.toLocaleString()}</b>`)}
+              ${line('แพทย์', `<b class="text-slate-700">${x.docs} คน</b>`)}
             </div>`;
           }
         }
@@ -897,27 +628,24 @@
       clinicChart.render();
     }
 
+    // ---------- Tables ----------
     function renderClinicTable(th) {
-      const rows = execState.clinics;
-      $('exec-clinic-body').innerHTML = rows.map(c => `
-        <tr class="hover:bg-slate-50">
-          <td class="cell-clinic py-2.5 px-4 text-left font-medium text-slate-700" data-label="คลินิก">${esc(c.name)}</td>
-          <td class="py-2.5 px-4 text-right tabular-nums" data-label="แพทย์ (คน)">${c.docs}</td>
-          <td class="py-2.5 px-4 text-right tabular-nums" data-label="รวม (เคส)">${c.total.toLocaleString()}</td>
-          <td class="py-2.5 px-4 text-right tabular-nums text-emerald-600 font-medium" data-label="เสร็จ (เคส)">${c.completed.toLocaleString()}</td>
-          <td class="py-2.5 px-4 text-right tabular-nums text-rose-500" data-label="ค้างลง (เคส)">${c.backlog.toLocaleString()}</td>
-          <td class="py-2.5 px-4 text-right" data-label="% สำเร็จ">${pctBar(c.pct, th)}</td>
-          <td class="py-2.5 px-4 text-right" data-label="เทียบช่วงก่อน">${deltaChip(c.pct, c.prevPct, { mode: 'pp', goodUp: true })}</td>
-        </tr>`).join('');
+      $('exec-clinic-body').innerHTML = execState.clinics.map(c => `<tr class="hover:bg-slate-50">
+        ${tdc('คลินิก', esc(c.name))}
+        ${td('แพทย์ (คน)', c.docs)}
+        ${td('รวม (เคส)', c.total.toLocaleString())}
+        ${td('เสร็จ (เคส)', c.completed.toLocaleString(), 'text-right tabular-nums text-emerald-600 font-medium')}
+        ${td('ค้างลง (เคส)', c.backlog.toLocaleString(), 'text-right tabular-nums text-rose-500')}
+        ${td('% สำเร็จ', pctBar(c.pct, th), 'text-right')}
+        ${td('เทียบช่วงก่อน', deltaChip(c.pct, c.prevPct, { mode: 'pp', goodUp: true }), 'text-right')}
+      </tr>`).join('');
     }
 
     function renderWatchlist() {
       const s = execState;
       const th = Number($('exec-threshold').value);
-      const body = $('exec-watch-body');
-      const toggle = $('exec-watch-toggle');
-      const flagged = s.flagged;
-      const LIMIT = 15;
+      const body = $('exec-watch-body'), toggle = $('exec-watch-toggle');
+      const flagged = s.flagged, LIMIT = 15;
 
       if (!flagged.length) {
         body.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-emerald-600">🎉 ไม่มีแพทย์ที่ต่ำกว่าเกณฑ์ ${th}% ในช่วงนี้</td></tr>`;
@@ -925,126 +653,274 @@
         toggle.classList.add('hidden');
         return;
       }
-
       const flagBacklog = flagged.reduce((sum, d) => sum + d.backlog, 0);
-      const share = pctOf(flagBacklog, s.cur.backlog);
-      $('exec-watch-summary').innerHTML =
-        `แพทย์ <b>${flagged.length}</b> คน มีเคสค้างลงรวม <b>${flagBacklog.toLocaleString()}</b> เคส (${share.toFixed(1)}% ของเคสค้างทั้งหมด) · เรียงตามเคสค้างมากสุด`;
+      $('exec-watch-summary').innerHTML = `แพทย์ <b>${flagged.length}</b> คน มีเคสค้างลงรวม <b>${flagBacklog.toLocaleString()}</b> เคส (${pctOf(flagBacklog, s.cur.backlog).toFixed(1)}% ของเคสค้างทั้งหมด) · เรียงตามเคสค้างมากสุด`;
 
       const shown = s.showAllWatch ? flagged : flagged.slice(0, LIMIT);
-      body.innerHTML = shown.map(d => `
-        <tr class="hover:bg-slate-50">
-          <td class="cell-clinic py-2.5 px-4 text-left font-medium text-slate-700" data-label="คลินิก">${esc(d.clinic)}</td>
-          <td class="py-2.5 px-4 text-center tabular-nums" data-label="เลข ว.">${esc(d.docId)}</td>
-          <td class="py-2.5 px-4 text-left" data-label="ชื่อแพทย์">${esc(d.docName)}</td>
-          <td class="py-2.5 px-4 text-right tabular-nums" data-label="รวม (เคส)">${d.total.toLocaleString()}</td>
-          <td class="py-2.5 px-4 text-right tabular-nums text-rose-500 font-medium" data-label="ค้างลง (เคส)">${d.backlog.toLocaleString()}</td>
-          <td class="py-2.5 px-4 text-right" data-label="% สำเร็จ">${pctBar(d.pct, th)}</td>
-          <td class="py-2.5 px-4 text-center" data-label="สถานะ">${statusBadge(d.pct, th)}</td>
-        </tr>`).join('');
+      body.innerHTML = shown.map(d => `<tr class="hover:bg-slate-50">
+        ${tdc('คลินิก', esc(d.clinic))}
+        ${td('เลข ว.', esc(d.docId), 'text-center tabular-nums')}
+        ${td('ชื่อแพทย์', esc(d.docName), 'text-left')}
+        ${td('รวม (เคส)', d.total.toLocaleString())}
+        ${td('ค้างลง (เคส)', d.backlog.toLocaleString(), 'text-right tabular-nums text-rose-500 font-medium')}
+        ${td('% สำเร็จ', pctBar(d.pct, th), 'text-right')}
+        ${td('สถานะ', statusBadge(d.pct, th), 'text-center')}
+      </tr>`).join('');
 
       if (flagged.length > LIMIT) {
         toggle.classList.remove('hidden');
         toggle.textContent = s.showAllWatch ? 'แสดงเฉพาะ 15 อันดับแรก' : `ดูทั้งหมด (${flagged.length} คน)`;
-      } else {
-        toggle.classList.add('hidden');
-      }
+      } else toggle.classList.add('hidden');
     }
-
-    function toggleWatchAll() {
-      execState.showAllWatch = !execState.showAllWatch;
-      renderWatchlist();
-    }
+    function toggleWatchAll() { execState.showAllWatch = !execState.showAllWatch; renderWatchlist(); }
 
     function renderDailyTable(th) {
-      const rows = [...execState.daily].reverse(); // วันล่าสุดขึ้นก่อน
-      $('exec-daily-body').innerHTML = rows.map(d => `
-        <tr class="hover:bg-slate-50">
-          <td class="cell-clinic py-2.5 px-4 text-left font-medium text-slate-700" data-label="วันที่">${fullThaiDate(d.date)}</td>
-          <td class="py-2.5 px-4 text-right tabular-nums" data-label="รวม (เคส)">${d.total.toLocaleString()}</td>
-          <td class="py-2.5 px-4 text-right tabular-nums text-emerald-600 font-medium" data-label="เสร็จ (เคส)">${d.completed.toLocaleString()}</td>
-          <td class="py-2.5 px-4 text-right tabular-nums text-rose-500" data-label="ค้างลง (เคส)">${d.backlog.toLocaleString()}</td>
-          <td class="py-2.5 px-4 text-right" data-label="% สำเร็จ">${pctBar(d.pct, th)}</td>
-          <td class="py-2.5 px-4 text-center" data-label="สถานะ">${statusBadge(d.pct, th)}</td>
-        </tr>`).join('');
+      $('exec-daily-body').innerHTML = [...execState.daily].reverse().map(d => `<tr class="hover:bg-slate-50">
+        ${tdc('วันที่', fullThaiDate(d.date))}
+        ${td('รวม (เคส)', d.total.toLocaleString())}
+        ${td('เสร็จ (เคส)', d.completed.toLocaleString(), 'text-right tabular-nums text-emerald-600 font-medium')}
+        ${td('ค้างลง (เคส)', d.backlog.toLocaleString(), 'text-right tabular-nums text-rose-500')}
+        ${td('% สำเร็จ', pctBar(d.pct, th), 'text-right')}
+        ${td('สถานะ', statusBadge(d.pct, th), 'text-center')}
+      </tr>`).join('');
     }
 
+    // ---------- สถิติรายแพทย์ (ใช้ร่วม Heatmap + อันดับ) ----------
+    function buildDoctorStats() {
+      const map = new Map();
+      execState.rows.forEach(r => {
+        const key = `${r.clinic}||${r.doc_code}`;
+        const date = String(r.regist_date).slice(0, 10);
+        let d = map.get(key);
+        if (!d) { d = { key, clinic: r.clinic, docId: r.doc_code, docName: r.doc_name, total: 0, completed: 0, byDate: new Map() }; map.set(key, d); }
+        const t = Number(r.total_cases) || 0, c = Number(r.completed_cases) || 0;
+        d.total += t; d.completed += c;
+        const cell = d.byDate.get(date) || { t: 0, c: 0 };
+        cell.t += t; cell.c += c;
+        d.byDate.set(date, cell);
+      });
+      execState.docStats = [...map.values()].map(d => {
+        let activeDays = 0, perfectDays = 0;
+        d.byDate.forEach(v => { if (v.t > 0) { activeDays++; if (v.c >= v.t) perfectDays++; } });
+        return { ...d, pct: pctOf(d.completed, d.total), backlog: d.total - d.completed, activeDays, perfectDays, consistency: activeDays > 0 ? (perfectDays / activeDays) * 100 : 0 };
+      });
+    }
+
+    // ---------- ตารางแยกตามวันในสัปดาห์ ----------
+    function renderDow(th) {
+      const s = execState;
+      const buckets = DOW_ORDER.map(dw => ({ dw, dates: new Set(), total: 0, completed: 0 }));
+      s.daily.forEach(d => {
+        const b = buckets.find(x => x.dw === dowOf(d.date));
+        b.dates.add(d.date); b.total += d.total; b.completed += d.completed;
+      });
+      const rows = buckets.filter(b => b.dates.size > 0).map(b => ({
+        name: DOW_NAMES[b.dw], days: b.dates.size, total: b.total, completed: b.completed,
+        avgTotal: b.total / b.dates.size, avgBacklog: (b.total - b.completed) / b.dates.size, pct: pctOf(b.completed, b.total)
+      }));
+      s.dow = rows;
+
+      const body = $('exec-dow-body');
+      if (!rows.length) { body.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-slate-400">ไม่มีข้อมูล</td></tr>'; $('exec-dow-insight').textContent = ''; return; }
+
+      const worst = rows.reduce((a, b) => (b.pct < a.pct ? b : a));
+      const best = rows.reduce((a, b) => (b.pct > a.pct ? b : a));
+      const multi = rows.length > 1;
+      $('exec-dow-insight').innerHTML = multi
+        ? `วัน<b class="text-rose-600">${worst.name}</b> ลงข้อมูลต่ำสุด (${worst.pct.toFixed(1)}%) · วัน<b class="text-emerald-600">${best.name}</b> สูงสุด (${best.pct.toFixed(1)}%)` : '';
+
+      body.innerHTML = rows.map(r => {
+        const tag = !multi ? '' : r === worst ? ' <span class="ml-1 px-1.5 py-0.5 rounded-md text-[10px] bg-rose-100 text-rose-700">ต่ำสุด</span>'
+          : r === best ? ' <span class="ml-1 px-1.5 py-0.5 rounded-md text-[10px] bg-emerald-100 text-emerald-700">สูงสุด</span>' : '';
+        return `<tr class="hover:bg-slate-50">
+          ${tdc('วัน', r.name + tag)}
+          ${td('จำนวนวันที่มีข้อมูล', r.days)}
+          ${td('เคสเฉลี่ย/วัน', r.avgTotal.toFixed(1))}
+          ${td('ค้างลงเฉลี่ย/วัน', r.avgBacklog.toFixed(1), 'text-right tabular-nums text-rose-500')}
+          ${td('% สำเร็จ', pctBar(r.pct, th), 'text-right')}
+          ${td('เทียบค่าเฉลี่ยรวม', deltaChip(r.pct, s.cur.pct, { mode: 'pp', goodUp: true }), 'text-right')}
+        </tr>`;
+      }).join('');
+    }
+
+    // ---------- Heatmap แพทย์ × วัน ----------
+    function heatColor(pct, th) {
+      if (pct >= 100) return { bg: '#6ee7b7', fg: '#064e3b' };
+      if (pct >= th) return { bg: '#a7f3d0', fg: '#065f46' };
+      if (pct >= 50) return { bg: '#fde68a', fg: '#92400e' };
+      return { bg: '#fecdd3', fg: '#9f1239' };
+    }
+
+    function renderHeatmap() {
+      const s = execState;
+      if (!s.docStats) return;
+      const th = Number($('exec-threshold').value);
+      const minC = Number($('exec-mincases').value);
+      const mode = $('exec-heat-mode').value;
+      const limit = Number($('exec-heat-limit').value);
+      const wrap = $('exec-heat-wrap');
+
+      let docs = s.docStats.filter(d => d.total >= minC);
+      docs = mode === 'flagged'
+        ? docs.filter(d => d.pct < th).sort((a, b) => b.backlog - a.backlog)
+        : docs.sort((a, b) => b.total - a.total);
+      const totalDocs = docs.length;
+      docs = docs.slice(0, limit);
+
+      let dates = s.daily.map(d => d.date);
+      const trimmed = dates.length > 31;
+      if (trimmed) dates = dates.slice(-31);
+
+      $('exec-heat-info').textContent = `แสดง ${docs.length} จาก ${totalDocs} คน` + (trimmed ? ' · แสดง 31 วันล่าสุดของช่วงที่เลือก' : '');
+
+      if (!docs.length) { wrap.innerHTML = '<div class="py-10 text-center text-sm text-emerald-600">🎉 ไม่มีแพทย์ที่เข้าเงื่อนไข</div>'; return; }
+
+      const head = dates.map(dt => `<th class="px-1 py-1.5 text-center font-medium text-[10px] text-slate-500 bg-white min-w-[34px]">${dt.split('-')[2]}<div class="text-[9px] text-slate-400">${THAI_DOW[dowOf(dt)]}</div></th>`).join('');
+
+      const bodyRows = docs.map(d => {
+        const cells = dates.map(dt => {
+          const v = d.byDate.get(dt);
+          if (!v || v.t === 0) return '<td class="p-0.5"><div class="h-7 rounded bg-slate-50"></div></td>';
+          const p = pctOf(v.c, v.t), col = heatColor(p, th);
+          const tip = `${d.docName} · ${toThaiDateDisplay(dt)} : ${v.c}/${v.t} เคส (${p.toFixed(0)}%)`;
+          return `<td class="p-0.5"><div class="h-7 rounded flex items-center justify-center text-[10px] font-medium cursor-default" style="background:${col.bg};color:${col.fg}" title="${esc(tip)}">${Math.round(p)}</div></td>`;
+        }).join('');
+        return `<tr>
+          <td class="sticky left-0 bg-white px-3 py-1 text-left whitespace-nowrap border-r border-slate-100" style="z-index:5">
+            <div class="text-xs font-medium text-slate-700">${esc(d.docName)}</div>
+            <div class="text-[10px] text-slate-400">${esc(d.clinic)} · ${esc(d.docId)}</div>
+          </td>${cells}
+          <td class="px-2 text-right text-xs font-semibold tabular-nums" style="color:${colorFor(d.pct, th)}">${d.pct.toFixed(0)}%</td>
+        </tr>`;
+      }).join('');
+
+      wrap.innerHTML = `<table class="min-w-full" style="border-collapse:separate;border-spacing:0">
+        <thead><tr>
+          <th class="px-3 py-2 text-left text-xs font-medium text-slate-500 bg-white sticky" style="left:0;z-index:20">แพทย์</th>
+          ${head}
+          <th class="px-2 py-2 text-right text-xs font-medium text-slate-500 bg-white">รวม</th>
+        </tr></thead><tbody>${bodyRows}</tbody></table>`;
+    }
+
+    // ---------- อันดับแพทย์ดีเด่น ----------
+    function renderRanking() {
+      const s = execState;
+      if (!s.docStats) return;
+      const th = Number($('exec-threshold').value);
+      const by = $('exec-rank-by').value;
+      const minAward = Number($('exec-rank-min').value);
+      const topN = Number($('exec-rank-top').value);
+
+      const sorters = {
+        pct: (a, b) => b.pct - a.pct || b.total - a.total,
+        consistency: (a, b) => b.consistency - a.consistency || b.activeDays - a.activeDays || b.pct - a.pct,
+        volume: (a, b) => b.completed - a.completed || b.pct - a.pct
+      };
+      const labels = { pct: '% ลงข้อมูลรวม', consistency: '% วันที่ลงครบ 100%', volume: 'เคสที่ลงแล้ว' };
+      const metric = d => by === 'pct' ? `${d.pct.toFixed(1)}%` : by === 'consistency' ? `${d.consistency.toFixed(1)}%` : d.completed.toLocaleString();
+
+      const ranked = s.docStats.filter(d => d.total >= minAward).sort(sorters[by]).slice(0, topN);
+      s.ranking = ranked;
+      const podium = $('exec-rank-podium'), body = $('exec-rank-body');
+
+      if (!ranked.length) {
+        podium.innerHTML = '';
+        body.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">ไม่มีแพทย์ที่มีเคสถึงเกณฑ์ขั้นต่ำ ${minAward} เคส</td></tr>`;
+        return;
+      }
+
+      const tone = ['bg-amber-50 border-amber-200', 'bg-slate-50 border-slate-200', 'bg-orange-50 border-orange-200'];
+      podium.innerHTML = ranked.slice(0, 3).map((d, i) => `
+        <div class="rounded-xl border p-3 ${tone[i]}">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">${MEDALS[i]}</span>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-slate-800 truncate">${esc(d.docName)}</p>
+              <p class="text-[11px] text-slate-500 truncate">${esc(d.clinic)}</p>
+            </div>
+          </div>
+          <p class="mt-2 text-2xl font-semibold text-slate-800 tabular-nums">${metric(d)}</p>
+          <p class="text-[11px] text-slate-500">${labels[by]} · ${d.completed.toLocaleString()}/${d.total.toLocaleString()} เคส</p>
+        </div>`).join('');
+
+      body.innerHTML = ranked.map((d, i) => `<tr class="hover:bg-slate-50">
+        ${td('อันดับ', i < 3 ? MEDALS[i] : i + 1, 'text-center font-semibold text-slate-600')}
+        ${td('ชื่อแพทย์', esc(d.docName), 'text-left font-medium text-slate-700')}
+        ${td('คลินิก', esc(d.clinic), 'text-left')}
+        ${td('เลข ว.', esc(d.docId), 'text-center tabular-nums')}
+        ${td('รวม (เคส)', d.total.toLocaleString())}
+        ${td('เสร็จ (เคส)', d.completed.toLocaleString(), 'text-right tabular-nums text-emerald-600 font-medium')}
+        ${td('% สำเร็จ', pctBar(d.pct, th), 'text-right')}
+        ${td('วันที่มีเคส', d.activeDays)}
+        ${td('ลงครบ 100% (วัน)', d.perfectDays)}
+        ${td('% วันที่ลงครบ', `${d.consistency.toFixed(1)}%`, 'text-right tabular-nums font-medium')}
+      </tr>`).join('');
+    }
+
+    // =====================================================================
+    //  EXPORT
+    // =====================================================================
     function exportExecExcel() {
       const s = execState;
       if (!s.rows.length) return alert('กรุณาค้นหาข้อมูลก่อน Export');
       const th = Number($('exec-threshold').value);
-      const f1 = (n) => Number(n.toFixed(1));
-
-      const wb = XLSX.utils.book_new();
+      const f1 = n => Number(n.toFixed(1));
       const title = [`รายงานผู้บริหาร: ${toThaiDateDisplay(s.startDate)} - ${toThaiDateDisplay(s.endDate)}`, `เกณฑ์ผ่าน: ${th}%`, []];
+      const wb = XLSX.utils.book_new();
+      const add = (name, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([...title, ...rows]), name);
 
-      const wsDaily = XLSX.utils.aoa_to_sheet([
-        ...title,
+      add('รายวัน', [
         ['วันที่', 'รวม (เคส)', 'เสร็จ (เคส)', 'ค้างลง (เคส)', '% สำเร็จ'],
         ...s.daily.map(d => [toThaiDateDisplay(d.date), d.total, d.completed, d.backlog, f1(d.pct)]),
         [], ['รวมทั้งหมด', s.cur.total, s.cur.completed, s.cur.backlog, f1(s.cur.pct)]
       ]);
-      XLSX.utils.book_append_sheet(wb, wsDaily, 'รายวัน');
-
-      const wsClinic = XLSX.utils.aoa_to_sheet([
-        ...title,
-        ['คลินิก', 'แพทย์ (คน)', 'รวม (เคส)', 'เสร็จ (เคส)', 'ค้างลง (เคส)', '% สำเร็จ', '% ช่วงก่อน', 'เปลี่ยนแปลง (จุด)'],
-        ...s.clinics.map(c => [c.name, c.docs, c.total, c.completed, c.backlog, f1(c.pct),
-          c.prevPct === null ? '-' : f1(c.prevPct), c.prevPct === null ? '-' : f1(c.pct - c.prevPct)])
+      add('วันในสัปดาห์', [
+        ['วัน', 'จำนวนวันที่มีข้อมูล', 'เคสเฉลี่ย/วัน', 'ค้างลงเฉลี่ย/วัน', '% สำเร็จ'],
+        ...s.dow.map(r => [r.name, r.days, f1(r.avgTotal), f1(r.avgBacklog), f1(r.pct)])
       ]);
-      XLSX.utils.book_append_sheet(wb, wsClinic, 'รายคลินิก');
-
-      const wsWatch = XLSX.utils.aoa_to_sheet([
-        ...title,
+      add('รายคลินิก', [
+        ['คลินิก', 'แพทย์ (คน)', 'รวม (เคส)', 'เสร็จ (เคส)', 'ค้างลง (เคส)', '% สำเร็จ', '% ช่วงก่อน', 'เปลี่ยนแปลง (จุด)'],
+        ...s.clinics.map(c => [c.name, c.docs, c.total, c.completed, c.backlog, f1(c.pct), c.prevPct === null ? '-' : f1(c.prevPct), c.prevPct === null ? '-' : f1(c.pct - c.prevPct)])
+      ]);
+      add('แพทย์ที่ต้องติดตาม', [
         ['คลินิก', 'เลข ว.', 'ชื่อแพทย์', 'รวม (เคส)', 'ค้างลง (เคส)', '% สำเร็จ'],
         ...s.flagged.map(d => [d.clinic, d.docId, d.docName, d.total, d.backlog, f1(d.pct)])
       ]);
-      XLSX.utils.book_append_sheet(wb, wsWatch, 'แพทย์ที่ต้องติดตาม');
-
+      add('อันดับแพทย์', [
+        ['อันดับ', 'ชื่อแพทย์', 'คลินิก', 'เลข ว.', 'รวม (เคส)', 'เสร็จ (เคส)', '% สำเร็จ', 'วันที่มีเคส', 'ลงครบ 100% (วัน)', '% วันที่ลงครบ'],
+        ...s.ranking.map((d, i) => [i + 1, d.docName, d.clinic, d.docId, d.total, d.completed, f1(d.pct), d.activeDays, d.perfectDays, f1(d.consistency)])
+      ]);
       XLSX.writeFile(wb, `รายงานผู้บริหาร_${s.startDate}_ถึง_${s.endDate}.xlsx`);
     }
 
-    // =====================================================================
-    //  Export เดิม (Excel / PDF)
-    // =====================================================================
     function exportExcel() {
       if (!lastReportData) return alert('กรุณาค้นหาข้อมูลก่อน Export');
       const { list, gTotal, gCompleted, percent, startDate, endDate } = lastReportData;
-
       const wsData = [
         ['ระบบรายงานผลการลงข้อมูลแพทย์'],
         [`ช่วงวันที่: ${toThaiDateDisplay(startDate)} - ${toThaiDateDisplay(endDate)}`],
         [],
         ['คลินิก', 'เลข ว.', 'ชื่อแพทย์', 'รวม (เคส)', 'เสร็จ (เคส)', '% ความสำเร็จ']
       ];
-      list.forEach(item => {
-        const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
-        wsData.push([item.clinic, item.docId, item.docName, item.total, item.completed, `${pct}%`]);
+      list.forEach(i => {
+        const pct = i.total > 0 ? ((i.completed / i.total) * 100).toFixed(1) : '0.0';
+        wsData.push([i.clinic, i.docId, i.docName, i.total, i.completed, `${pct}%`]);
       });
       wsData.push([], ['รวมทั้งหมด', '', '', gTotal, gCompleted, `${percent}%`]);
-
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'รายงาน');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), 'รายงาน');
       XLSX.writeFile(wb, `รายงานลงข้อมูลแพทย์_${startDate}_ถึง_${endDate}.xlsx`);
     }
 
     async function exportPDF() {
       if (!lastReportData) return alert('กรุณาค้นหาข้อมูลก่อน Export');
       const { list, gTotal, gCompleted, percent, startDate, endDate } = lastReportData;
-
-      let rowsHtml = '';
-      list.forEach(item => {
-        const pct = item.total > 0 ? ((item.completed / item.total) * 100).toFixed(1) : '0.0';
-        rowsHtml += `<tr>
-          <td style="padding:6px 8px;border:1px solid #ccc;text-align:left;">${esc(item.clinic)}</td>
-          <td style="padding:6px 8px;border:1px solid #ccc;text-align:center;">${esc(item.docId)}</td>
-          <td style="padding:6px 8px;border:1px solid #ccc;text-align:left;">${esc(item.docName)}</td>
-          <td style="padding:6px 8px;border:1px solid #ccc;text-align:right;">${item.total.toLocaleString()}</td>
-          <td style="padding:6px 8px;border:1px solid #ccc;text-align:right;">${item.completed.toLocaleString()}</td>
-          <td style="padding:6px 8px;border:1px solid #ccc;text-align:right;">${pct}%</td>
-        </tr>`;
-      });
+      const cell = (v, a) => `<td style="padding:6px 8px;border:1px solid #ccc;text-align:${a};">${v}</td>`;
+      const rowsHtml = list.map(i => {
+        const pct = i.total > 0 ? ((i.completed / i.total) * 100).toFixed(1) : '0.0';
+        return `<tr>${cell(esc(i.clinic), 'left')}${cell(esc(i.docId), 'center')}${cell(esc(i.docName), 'left')}${cell(i.total.toLocaleString(), 'right')}${cell(i.completed.toLocaleString(), 'right')}${cell(pct + '%', 'right')}</tr>`;
+      }).join('');
+      const th = (t, a = 'center') => `<th style="padding:8px;border:1px solid #ccc;text-align:${a};">${t}</th>`;
 
       const printArea = document.createElement('div');
       printArea.style.cssText = 'position:fixed; top:-9999px; left:-9999px; width:1000px; background:#fff; padding:30px; font-family:Kanit, sans-serif; color:#111;';
@@ -1054,133 +930,24 @@
           <p style="margin:6px 0 0; font-size:13px; color:#475569;">ช่วงวันที่ ${toThaiDateDisplay(startDate)} - ${toThaiDateDisplay(endDate)}</p>
         </div>
         <table style="width:100%; border-collapse:collapse; font-size:13px;">
-          <tr style="background:#334155; color:#fff;">
-            <th style="padding:8px;border:1px solid #ccc;text-align:left;">คลินิก</th>
-            <th style="padding:8px;border:1px solid #ccc;">เลข ว.</th>
-            <th style="padding:8px;border:1px solid #ccc;text-align:left;">ชื่อแพทย์</th>
-            <th style="padding:8px;border:1px solid #ccc;">รวม (เคส)</th>
-            <th style="padding:8px;border:1px solid #ccc;">เสร็จ (เคส)</th>
-            <th style="padding:8px;border:1px solid #ccc;">% ความสำเร็จ</th>
-          </tr>
+          <tr style="background:#334155; color:#fff;">${th('คลินิก', 'left')}${th('เลข ว.')}${th('ชื่อแพทย์', 'left')}${th('รวม (เคส)')}${th('เสร็จ (เคส)')}${th('% ความสำเร็จ')}</tr>
           ${rowsHtml}
           <tr style="background:#f1f5f9; font-weight:bold; color:#111;">
             <td style="padding:8px;border:1px solid #ccc; text-align:center;" colspan="3">รวมทั้งหมด</td>
-            <td style="padding:8px;border:1px solid #ccc;text-align:right;">${gTotal.toLocaleString()}</td>
-            <td style="padding:8px;border:1px solid #ccc;text-align:right;">${gCompleted.toLocaleString()}</td>
-            <td style="padding:8px;border:1px solid #ccc;text-align:right;">${percent}%</td>
+            ${cell(gTotal.toLocaleString(), 'right')}${cell(gCompleted.toLocaleString(), 'right')}${cell(percent + '%', 'right')}
           </tr>
-        </table>
-      `;
+        </table>`;
       document.body.appendChild(printArea);
-
       try {
         const canvas = await html2canvas(printArea, { scale: 2, useCORS: true });
-        const imgData = canvas.toDataURL('image/png');
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        const w = pdf.internal.pageSize.getWidth();
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, (canvas.height * w) / canvas.width);
         pdf.save(`รายงานลงข้อมูลแพทย์_${startDate}_ถึง_${endDate}.pdf`);
       } finally {
         document.body.removeChild(printArea);
       }
-    }
-
-    // =====================================================================
-    //  อัปโหลด CSV (เดิม)
-    // =====================================================================
-    function updateFileName() {
-      const fileInput = $('csv-file');
-      const fileNameDisplay = $('file-name');
-      const uploadBtn = $('upload-btn');
-
-      if (fileInput.files.length > 0) {
-        fileNameDisplay.innerHTML = `📄 ไฟล์ที่เลือก: <strong>${esc(fileInput.files[0].name)}</strong>`;
-        uploadBtn.classList.remove('hidden');
-      } else {
-        fileNameDisplay.innerText = 'ยังไม่ได้เลือกไฟล์';
-        uploadBtn.classList.add('hidden');
-      }
-    }
-
-    function parseThaiDateToISO(thaiDateStr) {
-      if (!thaiDateStr) return null;
-      let parts = thaiDateStr.split('/');
-      if (parts.length === 3) {
-        let d = parts[0].padStart(2, '0');
-        let m = parts[1].padStart(2, '0');
-        let y = parseInt(parts[2], 10);
-        if (y > 2500) y -= 543;
-        return `${y}-${m}-${d}`;
-      }
-      return null;
-    }
-
-    function processAndUploadCSV() {
-      const fileInput = $('csv-file');
-      if (fileInput.files.length === 0) return;
-
-      const file = fileInput.files[0];
-      const statusDiv = $('upload-status');
-      statusDiv.classList.remove('hidden', 'text-green-600', 'text-red-600');
-      statusDiv.classList.add('text-blue-600');
-      statusDiv.innerHTML = `<span class="spinner"></span>กำลังอ่านไฟล์ CSV...`;
-
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async function(results) {
-          const rows = results.data;
-          statusDiv.innerHTML = `<span class="spinner"></span>อ่านสำเร็จ ${rows.length.toLocaleString()} แถว กำลังส่งขึ้นฐานข้อมูล...`;
-
-          const dataToInsert = [];
-          for (let row of rows) {
-            let dateStr = row['RegistDate'];
-            let clinic = row['คลินิก (qName)'] || 'ไม่ระบุแผนก';
-            let docCode = row['เลข ว.'] || '';
-            let docName = row['ชื่อแพทย์'] || '';
-            let totalCases = parseInt(row['จำนวนเคสตรวจทั้งหมด'], 10) || 0;
-            let completedCases = parseInt(row['จำนวนเคสที่ลงข้อมูลแล้ว'], 10) || 0;
-
-            let dateISO = parseThaiDateToISO(dateStr);
-            if (!dateISO) continue;
-
-            dataToInsert.push({
-              regist_date: dateISO,
-              clinic: clinic,
-              doc_code: docCode,
-              doc_name: docName,
-              total_cases: totalCases,
-              completed_cases: completedCases
-            });
-          }
-
-          const batchSize = 1000;
-          let hasError = false;
-
-          for (let i = 0; i < dataToInsert.length; i += batchSize) {
-            const batch = dataToInsert.slice(i, i + batchSize);
-            const { error } = await supabaseClient
-              .from('opd_summary')
-              .upsert(batch, { onConflict: 'regist_date, clinic, doc_code, doc_name' });
-
-            if (error) { hasError = true; break; }
-          }
-
-          if (hasError) {
-            statusDiv.classList.replace('text-blue-600', 'text-red-600');
-            statusDiv.innerText = '❌ เกิดข้อผิดพลาดในการส่งข้อมูลขึ้นฐานข้อมูล';
-          } else {
-            statusDiv.classList.replace('text-blue-600', 'text-green-600');
-            statusDiv.innerText = `✅ อัปโหลดและอัปเดตข้อมูลสำเร็จเรียบร้อย!`;
-            $('csv-file').value = "";
-            updateFileName();
-            loadClinicDropdown();
-            loadDataAvailability();
-          }
-        }
-      });
     }
   </script>
 </body>
