@@ -26,6 +26,9 @@
     ::-webkit-scrollbar-track { background: #f1f5f9; }
     .btn-primary { background: linear-gradient(135deg, #2563eb, #3b82f6); transition: all .2s ease; }
     .btn-primary:hover { background: linear-gradient(135deg, #1d4ed8, #2563eb); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(37,99,235,.35); }
+    .vt { padding: .55rem 1.1rem; border-radius: .65rem; font-size: .95rem; color: #64748b; font-weight: 500; transition: all .2s ease; }
+    .vt:hover { color: #1d4ed8; }
+    .vt-active { background: #fff; color: #1d4ed8; font-weight: 600; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
     .spinner { border: 3px solid #dbeafe; border-top: 3px solid #2563eb; border-radius: 50%; width: 20px; height: 20px; animation: spin .8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .fade-in { animation: fadeIn .3s ease; }
@@ -64,81 +67,116 @@
   <div class="max-w-6xl mx-auto p-3 sm:p-4 md:p-6 -mt-4 sm:-mt-6">
     <div class="bg-white rounded-2xl shadow-xl p-3 sm:p-4 md:p-8">
 
-      <div id="data-availability-report" class="mb-4 sm:mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-indigo-900 flex items-start gap-2">
-        <span class="text-base sm:text-lg leading-none">ℹ️</span>
+      <!-- สลับมุมมอง -->
+      <div class="inline-flex p-1 bg-slate-100 rounded-xl w-full sm:w-auto mb-4">
+        <button id="vt-my" onclick="switchView('my')" class="vt vt-active flex-1 sm:flex-none">👤 รายงานของฉัน</button>
+        <button id="vt-exec" onclick="switchView('exec')" class="vt flex-1 sm:flex-none">📈 ภาพรวมผู้บริหาร</button>
+      </div>
+
+      <div class="mb-4 sm:mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs sm:text-sm text-indigo-900 flex items-start gap-2">
+        <span class="leading-none">ℹ️</span>
         <div id="data-availability-report-content" class="leading-relaxed">กำลังตรวจสอบข้อมูลในระบบ...</div>
       </div>
 
-      <!-- ฟิลเตอร์ -->
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-5 sm:mb-6 bg-gradient-to-br from-slate-50 to-blue-50 p-3 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
-          <input type="date" id="start-date" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+      <!-- ===================== มุมมอง: รายงานของฉัน ===================== -->
+      <div id="view-my">
+        <p class="text-sm text-slate-500 mb-3">พิมพ์ <b>เลข ว.</b> หรือ <b>ชื่อของท่าน</b> เพื่อดูผลการลงข้อมูลและวันที่ยังค้างอยู่ (ระบบจะจำค่าที่ค้นล่าสุดไว้ในเครื่องนี้)</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-2 bg-gradient-to-br from-slate-50 to-blue-50 p-3 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
+          <div>
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
+            <input type="date" id="my-start" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+          </div>
+          <div>
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
+            <input type="date" id="my-end" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+          </div>
+          <div class="col-span-2 md:col-span-1">
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. หรือ ชื่อแพทย์</label>
+            <input type="text" id="my-doc" placeholder="เช่น 27447 หรือ สมชาย" onkeydown="if(event.key==='Enter')fetchMy()" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+          </div>
+          <div class="col-span-2 md:col-span-1">
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 คลินิก (ไม่บังคับ)</label>
+            <select id="my-clinic" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 outline-none transition">
+              <option value="">-- ทุกคลินิก --</option>
+            </select>
+          </div>
+          <div class="col-span-2 md:col-span-1 flex items-end">
+            <button onclick="fetchMy()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-lg shadow text-sm sm:text-base">🔍 ค้นหาข้อมูล</button>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
-          <input type="date" id="end-date" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+        <div id="my-presets" class="flex flex-wrap items-center gap-1.5 mb-5"></div>
+
+        <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-5 sm:mb-6 text-center">
+          <div class="card-hover bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 sm:p-5 rounded-xl border border-blue-200 shadow-sm">
+            <p class="text-[10px] sm:text-sm text-blue-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>📋</span><span>เคสตรวจทั้งหมด</span></p>
+            <h3 class="text-lg sm:text-3xl font-bold text-blue-800 mt-1" id="sum-total">0</h3>
+          </div>
+          <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-2.5 sm:p-5 rounded-xl border border-green-200 shadow-sm">
+            <p class="text-[10px] sm:text-sm text-green-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>✅</span><span>ลงข้อมูลแล้ว</span></p>
+            <h3 class="text-lg sm:text-3xl font-bold text-green-800 mt-1" id="sum-completed">0</h3>
+          </div>
+          <div class="card-hover bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 sm:p-5 rounded-xl border border-purple-200 shadow-sm">
+            <p class="text-[10px] sm:text-sm text-purple-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>📈</span><span>อัตราความสำเร็จ</span></p>
+            <h3 class="text-lg sm:text-3xl font-bold text-purple-800 mt-1" id="sum-percent">0.0%</h3>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. แพทย์</label>
-          <input type="text" id="filter-doccode" placeholder="เช่น 27447" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+
+        <!-- รายละเอียดส่วนตัว: กราฟ + วันที่ค้างลง (สร้างด้วย buildMyShell) -->
+        <div id="my-detail" class="hidden mb-6 fade-in"></div>
+
+        <div id="export-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 mb-3">
+          <p class="text-xs sm:text-sm text-gray-500">พบข้อมูลทั้งหมด <span id="result-count" class="font-bold text-gray-700">0</span> รายการ</p>
+          <div class="flex gap-2 w-full sm:w-auto">
+            <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📊 Export Excel</button>
+            <button onclick="exportPDF()" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📄 Export PDF</button>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 เลือกคลินิก</label>
-          <select id="filter-clinic" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 outline-none transition">
-            <option value="">-- ทุกคลินิก --</option>
-          </select>
-        </div>
-        <div class="col-span-2 md:col-span-1 flex items-end">
-          <button onclick="fetchReport()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-lg shadow text-sm sm:text-base">🔍 ค้นหาข้อมูล</button>
+
+        <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm max-h-[500px] overflow-y-auto">
+          <table class="min-w-full bg-white responsive-table">
+            <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white text-xs sm:text-sm">
+              <tr>
+                <th class="py-3 px-4 border-b border-slate-600 text-left">คลินิก</th>
+                <th class="py-3 px-4 border-b border-slate-600">เลข ว.</th>
+                <th class="py-3 px-4 border-b border-slate-600 text-left">ชื่อแพทย์</th>
+                <th class="py-3 px-4 border-b border-slate-600 text-right">รวม (เคส)</th>
+                <th class="py-3 px-4 border-b border-slate-600 text-right">เสร็จ (เคส)</th>
+                <th class="py-3 px-4 border-b border-slate-600 text-right">% ความสำเร็จ</th>
+              </tr>
+            </thead>
+            <tbody id="report-table-body" class="text-center text-xs sm:text-sm divide-y divide-gray-100">
+              <tr><td colspan="6" class="py-8 text-gray-400">👆 พิมพ์เลข ว. หรือชื่อของท่าน แล้วกดค้นหา</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <!-- สรุปตัวเลข -->
-      <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-5 sm:mb-6 text-center">
-        <div class="card-hover bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 sm:p-5 rounded-xl border border-blue-200 shadow-sm">
-          <p class="text-[10px] sm:text-sm text-blue-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>📋</span><span>เคสตรวจทั้งหมด</span></p>
-          <h3 class="text-lg sm:text-3xl font-bold text-blue-800 mt-1" id="sum-total">0</h3>
+      <!-- ===================== มุมมอง: ภาพรวมผู้บริหาร ===================== -->
+      <div id="view-exec" class="hidden">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-2 bg-gradient-to-br from-slate-50 to-blue-50 p-3 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
+          <div>
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
+            <input type="date" id="ex-start" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+          </div>
+          <div>
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
+            <input type="date" id="ex-end" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+          </div>
+          <div class="col-span-2 md:col-span-1">
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 คลินิก</label>
+            <select id="ex-clinic" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 outline-none transition">
+              <option value="">-- ทุกคลินิก --</option>
+            </select>
+          </div>
+          <div class="col-span-2 md:col-span-1 flex items-end">
+            <button onclick="fetchExec()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-lg shadow text-sm sm:text-base">📈 แสดงภาพรวม</button>
+          </div>
         </div>
-        <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-2.5 sm:p-5 rounded-xl border border-green-200 shadow-sm">
-          <p class="text-[10px] sm:text-sm text-green-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>✅</span><span>ลงข้อมูลแล้ว</span></p>
-          <h3 class="text-lg sm:text-3xl font-bold text-green-800 mt-1" id="sum-completed">0</h3>
-        </div>
-        <div class="card-hover bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 sm:p-5 rounded-xl border border-purple-200 shadow-sm">
-          <p class="text-[10px] sm:text-sm text-purple-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>📈</span><span>อัตราความสำเร็จ</span></p>
-          <h3 class="text-lg sm:text-3xl font-bold text-purple-800 mt-1" id="sum-percent">0.0%</h3>
-        </div>
-      </div>
+        <div id="ex-presets" class="flex flex-wrap items-center gap-1.5 mb-5"></div>
 
-      <!-- ส่วนผู้บริหาร (สร้างด้วย buildExecShell()) -->
-      <div id="exec-section" class="hidden space-y-4 sm:space-y-5 mb-6 fade-in"></div>
-
-      <!-- แถบ Export -->
-      <div id="export-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 mb-3">
-        <p class="text-xs sm:text-sm text-gray-500">พบข้อมูลทั้งหมด <span id="result-count" class="font-bold text-gray-700">0</span> รายการ</p>
-        <div class="flex gap-2 w-full sm:w-auto">
-          <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📊 Export Excel</button>
-          <button onclick="exportPDF()" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📄 Export PDF</button>
-        </div>
-      </div>
-
-      <!-- ตารางรายแพทย์ -->
-      <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm max-h-[500px] overflow-y-auto">
-        <table class="min-w-full bg-white responsive-table">
-          <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white text-xs sm:text-sm">
-            <tr>
-              <th class="py-3 px-4 border-b border-slate-600 text-left">คลินิก</th>
-              <th class="py-3 px-4 border-b border-slate-600">เลข ว.</th>
-              <th class="py-3 px-4 border-b border-slate-600 text-left">ชื่อแพทย์</th>
-              <th class="py-3 px-4 border-b border-slate-600 text-right">รวม (เคส)</th>
-              <th class="py-3 px-4 border-b border-slate-600 text-right">เสร็จ (เคส)</th>
-              <th class="py-3 px-4 border-b border-slate-600 text-right">% ความสำเร็จ</th>
-            </tr>
-          </thead>
-          <tbody id="report-table-body" class="text-center text-xs sm:text-sm divide-y divide-gray-100">
-            <tr><td colspan="6" class="py-8 text-gray-400">👆 กรุณาเลือกวันที่และกดค้นหา</td></tr>
-          </tbody>
-        </table>
+        <div id="exec-msg" class="hidden py-10 text-center text-sm text-slate-500"></div>
+        <div id="exec-section" class="hidden space-y-4 sm:space-y-5 mb-6 fade-in"></div>
       </div>
     </div>
 
@@ -167,6 +205,8 @@
     const MEDALS = ['🥇', '🥈', '🥉'];
     const CHART_FONT = 'Kanit, sans-serif';
     const dowOf = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay();
+    const lsGet = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+    const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
     function addDays(iso, n) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
     function daysBetween(a, b) { return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000) + 1; }
@@ -193,6 +233,14 @@
       return all;
     }
 
+    const baseQuery = (from, to, clinic) => {
+      let q = supabaseClient.from('opd_summary').select('*')
+        .gte('regist_date', from).lte('regist_date', to)
+        .order('regist_date').order('clinic').order('doc_code').order('doc_name');
+      if (clinic) q = q.eq('clinic', clinic);
+      return q;
+    };
+
     // ---------- HTML helpers ----------
     const SEL_CLS = 'p-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-300';
     const sel = (id, fn, opts, def) => `<select id="${id}" onchange="${fn}" class="${SEL_CLS}">${opts.map(([v, t]) => `<option value="${v}"${String(v) === String(def) ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
@@ -206,8 +254,56 @@
     const subP = (id, txt = '') => `<p id="${id}" class="text-[11px] text-slate-500 mt-0.5">${txt}</p>`;
 
     // =====================================================================
-    //  โครงส่วนผู้บริหาร
+    //  โครงหน้า / สลับมุมมอง / ช่วงวันที่
     // =====================================================================
+    let dataRange = { min: '', max: '' };
+    let execLoaded = false, execPending = false;
+
+    function switchView(v, push = true) {
+      ['my', 'exec'].forEach(k => {
+        $('view-' + k).classList.toggle('hidden', k !== v);
+        $('vt-' + k).className = 'vt flex-1 sm:flex-none' + (k === v ? ' vt-active' : '');
+      });
+      if (push) history.replaceState(null, '', v === 'exec' ? '#exec' : location.pathname + location.search);
+      if (v === 'exec') {
+        if (!execLoaded) fetchExec();
+        else if (execPending) { execPending = false; renderExecutive(); }
+      }
+    }
+
+    const PRESETS = [['7', '7 วันล่าสุด'], ['30', '30 วันล่าสุด'], ['month', 'เดือนล่าสุด'], ['lastmonth', 'เดือนก่อนหน้า'], ['all', 'ทั้งหมด']];
+    function buildPresets() {
+      ['my', 'ex'].forEach(p => {
+        $(p + '-presets').innerHTML = '<span class="text-[11px] text-slate-400 mr-1">ช่วงเร็ว:</span>' +
+          PRESETS.map(([k, t]) => `<button onclick="presetClick('${p}','${k}')" class="px-2.5 py-1 text-xs rounded-full border border-slate-200 bg-white text-slate-600 hover:border-blue-400 hover:text-blue-600 transition">${t}</button>`).join('');
+      });
+    }
+    function applyPreset(p, kind) {
+      if (!dataRange.max) return;
+      const mx = dataRange.max;
+      let s = mx, e = mx;
+      if (kind === '7') s = addDays(mx, -6);
+      else if (kind === '30') s = addDays(mx, -29);
+      else if (kind === 'month') s = mx.slice(0, 8) + '01';
+      else if (kind === 'lastmonth') { e = addDays(mx.slice(0, 8) + '01', -1); s = e.slice(0, 8) + '01'; }
+      else if (kind === 'all') s = dataRange.min;
+      if (dataRange.min && s < dataRange.min) s = dataRange.min;
+      $(p + '-start').value = s; $(p + '-end').value = e;
+    }
+    function presetClick(p, kind) {
+      applyPreset(p, kind);
+      if (p === 'ex') fetchExec();
+      else if ($('my-doc').value.trim() || $('my-clinic').value) fetchMy();
+    }
+
+    function buildMyShell() {
+      $('my-detail').innerHTML = `<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        ${chartCard('ผลการลงข้อมูลรายวัน', 'เขียว = ลงแล้ว · แดง = ยังค้างลง', 'chart-my')}
+        ${card(cardHead('⏳ วันที่ยังค้างลงข้อมูล', subP('my-pending-sum')) +
+          tableHtml('my-pending-body', [['วันที่', 'left'], ['คลินิก', 'left'], ['แพทย์', 'left'], ['รวม'], ['เสร็จ'], ['ค้างลง']], 'max-h-[340px] overflow-y-auto'))}
+      </div>`;
+    }
+
     function buildExecShell() {
       $('exec-section').innerHTML = `
         <div class="flex flex-wrap items-end justify-between gap-3">
@@ -284,21 +380,26 @@
     // =====================================================================
     //  INIT / DROPDOWN / AVAILABILITY
     // =====================================================================
-    window.onload = function () {
-      buildExecShell();
+    window.onload = async function () {
+      buildExecShell(); buildMyShell(); buildPresets();
       loadClinicDropdown();
-      loadDataAvailability();
+      await loadDataAvailability();
+      applyPreset('my', '30'); applyPreset('ex', '30');
+      const saved = lsGet('opd_my_doc');
+      if (saved) $('my-doc').value = saved;
+      const isExec = location.hash === '#exec';
+      switchView(isExec ? 'exec' : 'my', false);
+      if (saved && !isExec) fetchMy();
     };
 
     async function loadClinicDropdown() {
-      const clinicSelect = $('filter-clinic');
       try {
         const rows = await fetchAllRows(() =>
           supabaseClient.from('opd_summary').select('clinic')
             .order('regist_date').order('clinic').order('doc_code').order('doc_name'));
         const clinics = [...new Set(rows.map(r => r.clinic))].sort();
-        clinicSelect.innerHTML = '<option value="">-- ทุกคลินิก --</option>' +
-          clinics.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        const html = '<option value="">-- ทุกคลินิก --</option>' + clinics.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        ['my-clinic', 'ex-clinic'].forEach(id => { $(id).innerHTML = html; });
       } catch (e) { console.error('loadClinicDropdown', e); }
     }
 
@@ -312,62 +413,50 @@
           box.innerHTML = '⚠️ ยังไม่มีข้อมูลในระบบ (ระบบจะนำเข้าข้อมูลอัตโนมัติทุกวันเวลา 04:00 น.)';
           return;
         }
-        box.innerHTML = `📅 มีข้อมูลในระบบตั้งแต่วันที่ <strong>${toThaiDateDisplay(String(minData[0].regist_date).slice(0, 10))}</strong> ถึง <strong>${toThaiDateDisplay(String(maxData[0].regist_date).slice(0, 10))}</strong>`;
+        dataRange = { min: String(minData[0].regist_date).slice(0, 10), max: String(maxData[0].regist_date).slice(0, 10) };
+        box.innerHTML = `📅 มีข้อมูลในระบบตั้งแต่วันที่ <strong>${toThaiDateDisplay(dataRange.min)}</strong> ถึง <strong>${toThaiDateDisplay(dataRange.max)}</strong>`;
       } catch (err) {
         box.innerHTML = '❌ ไม่สามารถตรวจสอบข้อมูลได้';
       }
     }
 
     // =====================================================================
-    //  ดูรายงาน
+    //  มุมมอง: รายงานของฉัน
     // =====================================================================
-    let lastReportData = null;
+    let lastReportData = null, myChart = null;
 
-    async function fetchReport() {
-      const startDate = $('start-date').value;
-      const endDate = $('end-date').value;
-      const filterDocCode = $('filter-doccode').value.trim();
-      const filterClinic = $('filter-clinic').value;
+    async function fetchMy() {
+      const startDate = $('my-start').value, endDate = $('my-end').value;
+      const rawKw = $('my-doc').value.trim();
+      const kw = rawKw.replace(/[,()%*\\]/g, '');
+      const clinic = $('my-clinic').value;
       const tbody = $('report-table-body');
-      const exportToolbar = $('export-toolbar');
 
       if (!startDate || !endDate) { alert('กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด'); return; }
       if (startDate > endDate) { alert('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด'); return; }
+      if (!kw && !clinic) { alert('กรุณาพิมพ์เลข ว. หรือชื่อแพทย์ (หรือเลือกคลินิก) ก่อนค้นหา'); return; }
+      lsSet('opd_my_doc', rawKw);
 
-      exportToolbar.classList.add('hidden');
+      $('export-toolbar').classList.add('hidden');
+      $('my-detail').classList.add('hidden');
       lastReportData = null;
       tbody.innerHTML = '<tr><td colspan="6" class="py-8"><span class="spinner"></span>กำลังค้นหาข้อมูล...</td></tr>';
-      showExecSkeleton();
 
-      const span = daysBetween(startDate, endDate);
-      const prevEnd = addDays(startDate, -1);
-      const prevStart = addDays(prevEnd, -(span - 1));
-
-      const buildQuery = (from, to) => {
-        let q = supabaseClient.from('opd_summary').select('*')
-          .gte('regist_date', from).lte('regist_date', to)
-          .order('regist_date').order('clinic').order('doc_code').order('doc_name');
-        if (filterClinic) q = q.eq('clinic', filterClinic);
-        if (filterDocCode) q = q.ilike('doc_code', `%${filterDocCode}%`);
-        return q;
-      };
-
-      let data, prevData;
+      let data;
       try {
-        [data, prevData] = await Promise.all([
-          fetchAllRows(() => buildQuery(startDate, endDate)),
-          fetchAllRows(() => buildQuery(prevStart, prevEnd)).catch(() => [])
-        ]);
+        data = await fetchAllRows(() => {
+          let q = baseQuery(startDate, endDate, clinic);
+          if (kw) q = q.or(`doc_code.ilike.%${kw}%,doc_name.ilike.%${kw}%`);
+          return q;
+        });
       } catch (error) {
         tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-red-500">❌ Error: ${esc(error.message)}</td></tr>`;
-        destroyCharts(); $('exec-section').classList.add('hidden');
         return;
       }
 
-      if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-gray-500">❌ ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา</td></tr>';
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-gray-500">❌ ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา (ลองเปลี่ยนช่วงวันที่ หรือตรวจเลข ว./ชื่ออีกครั้ง)</td></tr>';
         $('sum-total').innerText = '0'; $('sum-completed').innerText = '0'; $('sum-percent').innerText = '0.0%';
-        destroyCharts(); $('exec-section').classList.add('hidden');
         return;
       }
 
@@ -404,14 +493,59 @@
 
       lastReportData = { list, gTotal, gCompleted, percent, startDate, endDate };
       $('result-count').innerText = list.length.toLocaleString();
-      exportToolbar.classList.remove('hidden');
+      $('export-toolbar').classList.remove('hidden');
+      renderMyDetail(data);
+    }
 
-      execState = { ...execState, rows: data, prevRows: prevData || [], list, startDate, endDate, prevStart, prevEnd, showAllWatch: false };
-      renderExecutive();
+    function renderMyDetail(data) {
+      $('my-detail').classList.remove('hidden');
+
+      // กราฟรายวัน: ลงแล้ว vs ค้างลง
+      const daily = [...groupBy(data, r => String(r.regist_date).slice(0, 10)).values()].sort((a, b) => a.key.localeCompare(b.key));
+      if (myChart) { myChart.destroy(); myChart = null; }
+      $('chart-my').innerHTML = '';
+      myChart = new ApexCharts($('chart-my'), {
+        chart: { type: 'bar', stacked: true, height: 300, fontFamily: CHART_FONT, toolbar: { show: false } },
+        series: [
+          { name: 'ลงข้อมูลแล้ว', data: daily.map(d => d.completed) },
+          { name: 'ค้างลง', data: daily.map(d => d.total - d.completed) }
+        ],
+        colors: ['#10b981', '#f43f5e'],
+        plotOptions: { bar: { borderRadius: 3, columnWidth: '60%' } },
+        dataLabels: { enabled: false },
+        xaxis: { categories: daily.map(d => d.key), tickAmount: Math.min(daily.length, 10), axisBorder: { show: false }, axisTicks: { show: false }, tooltip: { enabled: false }, labels: { rotate: 0, hideOverlappingLabels: true, style: { colors: '#94a3b8', fontSize: '11px' }, formatter: v => shortDate(String(v)) } },
+        yaxis: { min: 0, labels: { style: { colors: '#94a3b8', fontSize: '11px' }, formatter: v => Math.round(v).toLocaleString() } },
+        grid: { borderColor: '#f1f5f9', strokeDashArray: 4, xaxis: { lines: { show: false } } },
+        legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px', markers: { radius: 12 } },
+        tooltip: { shared: true, intersect: false, x: { formatter: (v, o) => fullThaiDate(daily[o.dataPointIndex].key) }, y: { formatter: v => `${Number(v).toLocaleString()} เคส` } }
+      });
+      myChart.render();
+
+      // ตารางวันที่ยังค้างลง
+      const pending = data
+        .map(r => ({ date: String(r.regist_date).slice(0, 10), clinic: r.clinic, doc: r.doc_name, total: Number(r.total_cases) || 0, completed: Number(r.completed_cases) || 0 }))
+        .filter(r => r.total - r.completed > 0)
+        .sort((a, b) => b.date.localeCompare(a.date) || (b.total - b.completed) - (a.total - a.completed));
+      const sumPending = pending.reduce((s, r) => s + (r.total - r.completed), 0);
+      const dayCount = new Set(pending.map(r => r.date)).size;
+
+      $('my-pending-sum').innerHTML = pending.length
+        ? `ค้างลงรวม <b class="text-rose-600">${sumPending.toLocaleString()}</b> เคส ใน <b>${dayCount}</b> วัน — กรุณาตรวจสอบและลงข้อมูลให้ครบ`
+        : '';
+      $('my-pending-body').innerHTML = pending.length
+        ? pending.map(r => `<tr class="hover:bg-slate-50">
+            ${tdc('วันที่', fullThaiDate(r.date))}
+            ${td('คลินิก', esc(r.clinic), 'text-left')}
+            ${td('แพทย์', esc(r.doc), 'text-left')}
+            ${td('รวม', r.total.toLocaleString())}
+            ${td('เสร็จ', r.completed.toLocaleString(), 'text-right tabular-nums text-emerald-600')}
+            ${td('ค้างลง', (r.total - r.completed).toLocaleString(), 'text-right tabular-nums text-rose-500 font-medium')}
+          </tr>`).join('')
+        : '<tr><td colspan="6" class="py-10 text-center text-emerald-600">🎉 ลงข้อมูลครบทุกเคสในช่วงนี้แล้ว</td></tr>';
     }
 
     // =====================================================================
-    //  EXECUTIVE MODULE
+    //  มุมมอง: ภาพรวมผู้บริหาร
     // =====================================================================
     let execState = { rows: [], prevRows: [], list: [], startDate: '', endDate: '', prevStart: '', prevEnd: '', showAllWatch: false, daily: [], clinics: [], flagged: [], cur: null, docStats: null, dow: [], ranking: [] };
     let trendChart = null, clinicChart = null;
@@ -421,8 +555,16 @@
       if (clinicChart) { clinicChart.destroy(); clinicChart = null; }
     }
 
+    function showExecMsg(html) {
+      destroyCharts();
+      $('exec-section').classList.add('hidden');
+      $('exec-msg').innerHTML = html;
+      $('exec-msg').classList.remove('hidden');
+    }
+
     function showExecSkeleton() {
       destroyCharts();
+      $('exec-msg').classList.add('hidden');
       $('exec-section').classList.remove('hidden');
       $('exec-subtitle').textContent = 'กำลังประมวลผล...';
       $('exec-kpis').innerHTML = Array(4).fill('<div class="h-[104px] rounded-xl bg-slate-100 animate-pulse"></div>').join('');
@@ -434,6 +576,39 @@
       $('exec-rank-podium').innerHTML = Array(3).fill('<div class="h-[110px] rounded-xl bg-slate-100 animate-pulse"></div>').join('');
       $('exec-watch-summary').textContent = '';
       $('exec-watch-toggle').classList.add('hidden');
+    }
+
+    async function fetchExec() {
+      execLoaded = true;
+      const startDate = $('ex-start').value, endDate = $('ex-end').value, clinic = $('ex-clinic').value;
+      if (!startDate || !endDate) { showExecMsg('กรุณาเลือกวันที่เริ่มต้นและสิ้นสุด'); return; }
+      if (startDate > endDate) { showExecMsg('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด'); return; }
+
+      showExecSkeleton();
+      const span = daysBetween(startDate, endDate);
+      const prevEnd = addDays(startDate, -1);
+      const prevStart = addDays(prevEnd, -(span - 1));
+
+      let data, prevData;
+      try {
+        [data, prevData] = await Promise.all([
+          fetchAllRows(() => baseQuery(startDate, endDate, clinic)),
+          fetchAllRows(() => baseQuery(prevStart, prevEnd, clinic)).catch(() => [])
+        ]);
+      } catch (error) { showExecMsg(`❌ Error: ${esc(error.message)}`); return; }
+
+      if (!data.length) { showExecMsg('❌ ไม่พบข้อมูลในช่วงที่เลือก'); return; }
+
+      const aggMap = {};
+      data.forEach(row => {
+        const key = `${row.clinic}_${row.doc_code}`;
+        if (!aggMap[key]) aggMap[key] = { clinic: row.clinic, docId: row.doc_code, docName: row.doc_name, total: 0, completed: 0 };
+        aggMap[key].total += Number(row.total_cases) || 0;
+        aggMap[key].completed += Number(row.completed_cases) || 0;
+      });
+
+      execState = { ...execState, rows: data, prevRows: prevData || [], list: Object.values(aggMap), startDate, endDate, prevStart, prevEnd, showAllWatch: false };
+      renderExecutive();
     }
 
     function groupBy(rows, keyFn) {
@@ -505,6 +680,9 @@
     function renderExecutive() {
       const s = execState;
       if (!s.rows.length) return;
+      // ถ้าผู้ใช้สลับไปแท็บอื่นระหว่างโหลด ให้รอเรนเดอร์ตอนกลับมา (กราฟต้องวาดตอนมองเห็นเท่านั้น)
+      if ($('view-exec').classList.contains('hidden')) { execPending = true; return; }
+
       const th = Number($('exec-threshold').value);
       const minC = Number($('exec-mincases').value);
       const sortBy = $('exec-clinic-sort').value;
@@ -862,7 +1040,7 @@
     // =====================================================================
     function exportExecExcel() {
       const s = execState;
-      if (!s.rows.length) return alert('กรุณาค้นหาข้อมูลก่อน Export');
+      if (!s.rows.length) return alert('กรุณาแสดงภาพรวมก่อน Export');
       const th = Number($('exec-threshold').value);
       const f1 = n => Number(n.toFixed(1));
       const title = [`รายงานผู้บริหาร: ${toThaiDateDisplay(s.startDate)} - ${toThaiDateDisplay(s.endDate)}`, `เกณฑ์ผ่าน: ${th}%`, []];
