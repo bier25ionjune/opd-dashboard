@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>รายงานคุณภาพการบันทึกเวชระเบียน</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  *{font-family:'Kanit',sans-serif}
+  body{background:linear-gradient(135deg,#eef2f7,#e0e8f5);min-height:100vh}
+  .hg{background:linear-gradient(135deg,#1e40af,#3b82f6 60%,#60a5fa)}
+  .tabb{padding:.5rem 1rem;border-radius:.65rem;font-size:.92rem;color:#64748b;font-weight:500;white-space:nowrap}
+  .tabb-on{background:#fff;color:#1d4ed8;font-weight:600;box-shadow:0 1px 3px rgba(15,23,42,.12)}
+  .spinner{border:3px solid #dbeafe;border-top:3px solid #2563eb;border-radius:50%;width:20px;height:20px;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .apexcharts-tooltip{font-family:'Kanit',sans-serif!important;border-radius:10px!important;box-shadow:0 8px 24px rgba(15,23,42,.12)!important;border:1px solid #e2e8f0!important}
+  input,select,textarea,button{font-size:16px}
+  thead th{position:sticky;top:0;background:#f8fafc;z-index:5}
+</style>
+<style type="text/tailwindcss">
+@layer components{
+  .inp{@apply w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-300 bg-white}
+  .sel{@apply p-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-300}
+  .btnp{@apply bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm transition}
+  .btns{@apply bg-white border border-slate-300 hover:border-blue-400 text-slate-700 font-medium py-1.5 px-3 rounded-lg text-sm transition}
+  .card{@apply bg-white border border-slate-200 rounded-xl shadow-sm}
+  .lbl{@apply block text-[11px] text-slate-500 mb-1}
+  .thc{@apply py-2.5 px-3 text-xs font-medium text-slate-500 text-right whitespace-nowrap}
+  .tdc{@apply py-2 px-3 text-sm text-right tabular-nums whitespace-nowrap}
+}
+</style>
+</head>
+<body class="pb-10">
+
+<header class="hg shadow-lg">
+  <div class="max-w-6xl mx-auto px-4 py-5 flex flex-wrap items-center justify-between gap-2">
+    <h1 class="text-lg sm:text-2xl font-bold text-white">🧾 รายงานคุณภาพการบันทึกเวชระเบียน</h1>
+    <a href="index.html" class="text-blue-100 hover:text-white text-sm underline">← กลับแดชบอร์ดหลัก</a>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto p-3 sm:p-6">
+
+  <section id="screen-loading" class="text-center py-16 text-slate-500"><span class="spinner"></span>กำลังโหลด...</section>
+
+  <!-- เข้าสู่ระบบ / สมัคร -->
+  <section id="screen-auth" class="hidden max-w-md mx-auto card p-5 sm:p-7 shadow-xl">
+    <p class="text-sm text-slate-500 mb-3">หน้านี้แสดงข้อมูลรายผู้ป่วย — ต้องเข้าสู่ระบบและได้รับอนุมัติก่อน</p>
+    <div class="inline-flex p-1 bg-slate-100 rounded-xl w-full mb-4">
+      <button id="at-login" onclick="authTab('login')" class="tabb tabb-on flex-1">เข้าสู่ระบบ</button>
+      <button id="at-signup" onclick="authTab('signup')" class="tabb flex-1">สมัครใช้งาน</button>
+    </div>
+    <form id="f-login" onsubmit="doLogin(event)" class="space-y-3">
+      <div><label class="lbl">อีเมล</label><input id="l-email" type="email" class="inp" required autocomplete="username"></div>
+      <div><label class="lbl">รหัสผ่าน</label><input id="l-pass" type="password" class="inp" required autocomplete="current-password"></div>
+      <button class="btnp w-full">เข้าสู่ระบบ</button>
+      <button type="button" onclick="doForgot()" class="text-xs text-blue-600 hover:underline w-full">ลืมรหัสผ่าน?</button>
+    </form>
+    <form id="f-signup" onsubmit="doSignup(event)" class="hidden space-y-3">
+      <div><label class="lbl">ประเภทผู้ใช้</label>
+        <select id="s-kind" class="inp" onchange="signupKind()">
+          <option value="doctor">แพทย์ (ใช้เลข ว.)</option>
+          <option value="exec">ผู้บริหาร / เจ้าหน้าที่</option>
+        </select></div>
+      <div id="s-doc-wrap"><label class="lbl">เลข ว. ของท่าน</label>
+        <input id="s-code" class="inp" placeholder="เช่น 27447" oninput="lookupName()">
+        <p id="s-found" class="text-xs mt-1"></p></div>
+      <div id="s-name-wrap" class="hidden"><label class="lbl">ชื่อ-นามสกุล</label><input id="s-name" class="inp"></div>
+      <div><label class="lbl">อีเมล</label><input id="s-email" type="email" class="inp" required autocomplete="username"></div>
+      <div><label class="lbl">ตั้งรหัสผ่าน (อย่างน้อย 8 ตัวอักษร)</label><input id="s-pass" type="password" class="inp" required autocomplete="new-password"></div>
+      <div><label class="lbl">ยืนยันรหัสผ่าน</label><input id="s-pass2" type="password" class="inp" required autocomplete="new-password"></div>
+      <p class="text-[11px] text-slate-500">หลังสมัคร บัญชีจะ <b>รอผู้ดูแลระบบอนุมัติ</b> ก่อนจึงเห็นข้อมูลได้</p>
+      <button class="btnp w-full">สมัครใช้งาน</button>
+    </form>
+    <p id="auth-msg" class="text-sm mt-3 text-center"></p>
+  </section>
+
+  <!-- เข้าสู่ระบบแล้วแต่ยังไม่มีคำขอ -->
+  <section id="screen-claim" class="hidden max-w-md mx-auto card p-5 sm:p-7 shadow-xl space-y-3">
+    <h2 class="font-semibold text-slate-800">ขอสิทธิ์ใช้งาน</h2>
+    <p class="text-sm text-slate-500">บัญชี: <b id="claim-email"></b></p>
+    <div><label class="lbl">ประเภทผู้ใช้</label>
+      <select id="cl-kind" class="inp" onchange="claimKind()">
+        <option value="doctor">แพทย์ (ใช้เลข ว.)</option>
+        <option value="exec">ผู้บริหาร / เจ้าหน้าที่</option>
+      </select></div>
+    <div id="cl-doc-wrap"><label class="lbl">เลข ว.</label><input id="cl-code" class="inp" oninput="claimLookup()"><p id="cl-found" class="text-xs mt-1"></p></div>
+    <div id="cl-name-wrap" class="hidden"><label class="lbl">ชื่อ-นามสกุล</label><input id="cl-name" class="inp"></div>
+    <button class="btnp w-full" onclick="doClaim()">ส่งคำขอ</button>
+    <button class="text-xs text-slate-500 hover:underline w-full" onclick="doLogout()">ออกจากระบบ</button>
+    <p id="claim-msg" class="text-sm text-center text-rose-600"></p>
+  </section>
+
+  <!-- รออนุมัติ -->
+  <section id="screen-pending" class="hidden max-w-md mx-auto card p-6 shadow-xl text-center space-y-3">
+    <div id="pend-body"></div>
+    <div class="flex gap-2 justify-center">
+      <button class="btns" onclick="recheck()">🔄 ตรวจสอบสถานะ</button>
+      <button class="btns" onclick="doLogout()">ออกจากระบบ</button>
+    </div>
+  </section>
+
+  <!-- ตั้งรหัสผ่านใหม่ -->
+  <section id="screen-reset" class="hidden max-w-md mx-auto card p-6 shadow-xl space-y-3">
+    <h2 class="font-semibold text-slate-800">ตั้งรหัสผ่านใหม่</h2>
+    <input id="r-pass" type="password" class="inp" placeholder="รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)" autocomplete="new-password">
+    <button class="btnp w-full" onclick="doReset()">บันทึก</button>
+    <p id="r-msg" class="text-sm text-center"></p>
+  </section>
+
+  <!-- ตัวแอป -->
+  <section id="screen-app" class="hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div id="nav" class="inline-flex p-1 bg-slate-100 rounded-xl overflow-x-auto max-w-full"></div>
+      <div class="flex items-center gap-2 text-sm text-slate-600">
+        <span id="who" class="font-medium"></span>
+        <span id="who-role" class="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-xs"></span>
+        <button class="btns" onclick="doLogout()">ออกจากระบบ</button>
+      </div>
+    </div>
+
+    <!-- ===== ภาพรวมผู้บริหาร ===== -->
+    <div id="pane-exec" class="hidden">
+      <div class="card p-3 sm:p-4 mb-3">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+          <div><label class="lbl">วันที่เริ่มต้น</label><input type="date" id="x-start" class="inp"></div>
+          <div><label class="lbl">ถึงวันที่</label><input type="date" id="x-end" class="inp"></div>
+          <div><label class="lbl">คลินิก</label><select id="x-clinic" class="inp"><option value="">ทุกคลินิก</option></select></div>
+          <div><label class="lbl">เกณฑ์ผ่าน (คะแนนเฉลี่ย)</label>
+            <select id="x-thr" class="inp" onchange="renderExec()"><option value="70">≥ 70%</option><option value="80">≥ 80%</option><option value="90" selected>≥ 90%</option></select></div>
+          <div><label class="lbl">เคสขั้นต่ำ/แพทย์</label>
+            <select id="x-min" class="inp" onchange="renderExec()"><option value="1">≥ 1</option><option value="5" selected>≥ 5</option><option value="10">≥ 10</option><option value="20">≥ 20</option></select></div>
+          <button class="btnp" onclick="loadExec()">📈 แสดงภาพรวม</button>
+        </div>
+        <div id="x-presets" class="flex flex-wrap gap-1.5 mt-3"></div>
+      </div>
+      <div id="x-msg" class="hidden py-10 text-center text-sm text-slate-500"></div>
+      <div id="x-body" class="hidden space-y-4">
+        <div class="flex justify-between items-center">
+          <p id="x-sub" class="text-xs text-slate-500"></p>
+          <button class="btns" onclick="exportExec()">📊 Excel ผู้บริหาร</button>
+        </div>
+        <div id="x-kpis" class="grid grid-cols-2 lg:grid-cols-6 gap-3"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="card p-4"><h3 class="text-sm font-semibold text-slate-700">แนวโน้มรายวัน (ถ่วงน้ำหนักด้วยจำนวนเคส)</h3><div id="x-trend"></div></div>
+          <div class="card p-4"><h3 class="text-sm font-semibold text-slate-700">คะแนนเฉลี่ยรายคลินิก</h3><div id="x-clinic-chart"></div></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="card p-4">
+            <div class="flex justify-between items-center gap-2 mb-1">
+              <h3 class="text-sm font-semibold text-slate-700">ช่องที่ขาดบ่อยที่สุด (% ของเคส)</h3>
+              <select id="x-grp" class="sel" onchange="renderPareto()">
+                <option value="all">ทั้งหมด</option><option value="dx">Dx</option><option value="pe">PE</option><option value="nurse">พยาบาล</option><option value="card">ออกบัตร</option>
+              </select>
+            </div>
+            <div id="x-pareto"></div>
+          </div>
+          <div class="card p-4"><h3 class="text-sm font-semibold text-slate-700">คะแนนตามช่วงเวลาของวัน</h3><div id="x-hour"></div></div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-100"><h3 class="text-sm font-semibold text-slate-700">🏥 เปรียบเทียบรายคลินิก</h3></div>
+          <div class="overflow-x-auto max-h-[380px] overflow-y-auto"><table class="min-w-full"><thead><tr>
+            <th class="thc text-left">คลินิก</th><th class="thc">เคส</th><th class="thc">ออกบัตร</th><th class="thc">พยบ</th><th class="thc">PE</th><th class="thc">Dx</th><th class="thc">เฉลี่ย</th></tr></thead>
+            <tbody id="x-clinic-body"></tbody></table></div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="text-sm font-semibold text-slate-700">🩺 แพทย์ (เรียงคะแนนเฉลี่ยต่ำ → สูง)</h3>
+            <button id="x-doc-more" class="text-xs text-blue-600 hover:underline" onclick="X.allDocs=!X.allDocs;renderDocTable()"></button>
+          </div>
+          <div class="overflow-x-auto max-h-[460px] overflow-y-auto"><table class="min-w-full"><thead><tr>
+            <th class="thc text-left">แพทย์</th><th class="thc">เคส</th><th class="thc">PE</th><th class="thc">Dx</th><th class="thc">เฉลี่ยรวม</th><th class="thc">สถานะ</th></tr></thead>
+            <tbody id="x-doc-body"></tbody></table></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="card overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-100"><h3 class="text-sm font-semibold text-slate-700">🪪 ผู้ลงทะเบียน (คะแนนออกบัตร · นับต่อ visit)</h3></div>
+            <div class="overflow-x-auto max-h-[340px] overflow-y-auto"><table class="min-w-full"><thead><tr><th class="thc text-left">เจ้าหน้าที่</th><th class="thc">visit</th><th class="thc">คะแนน</th></tr></thead><tbody id="x-card-body"></tbody></table></div>
+          </div>
+          <div class="card overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-100"><h3 class="text-sm font-semibold text-slate-700">💉 พยาบาลคัดกรอง (คะแนน พยบ · นับต่อ visit)</h3></div>
+            <div class="overflow-x-auto max-h-[340px] overflow-y-auto"><table class="min-w-full"><thead><tr><th class="thc text-left">เจ้าหน้าที่</th><th class="thc">visit</th><th class="thc">คะแนน</th></tr></thead><tbody id="x-nurse-body"></tbody></table></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== รายเคส / รายงานของฉัน ===== -->
+    <div id="pane-cases" class="hidden">
+      <div id="c-note" class="hidden mb-3 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs sm:text-sm text-indigo-900">
+        ส่วนที่เป็นความรับผิดชอบของแพทย์คือ <b>PE</b> และ <b>Dx</b> ส่วน <b>ออกบัตร</b> และ <b>พยบ</b> แสดงไว้เพื่อทราบ — ดูวิธีคิดคะแนนที่แท็บ "คู่มือ"
+      </div>
+      <div class="card p-3 sm:p-4 mb-3">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+          <div><label class="lbl">วันที่เริ่มต้น</label><input type="date" id="c-start" class="inp"></div>
+          <div><label class="lbl">ถึงวันที่</label><input type="date" id="c-end" class="inp"></div>
+          <div id="c-doc-wrap"><label class="lbl">เลข ว. / ชื่อแพทย์</label><input id="c-doc" class="inp" placeholder="ทั้งหมด"></div>
+          <div><label class="lbl">คลินิก</label><select id="c-clinic" class="inp" onchange="applyCaseFilters()"><option value="">ทุกคลินิก</option></select></div>
+          <div><label class="lbl">แสดง</label>
+            <select id="c-mode" class="inp" onchange="applyCaseFilters()">
+              <option value="all">ทุกเคส</option><option value="doc">ส่วนแพทย์ไม่ครบ (PE/Dx)</option><option value="any">ไม่ครบทุกส่วน</option>
+            </select></div>
+          <button class="btnp" onclick="loadCases()">🔍 ค้นหา</button>
+        </div>
+        <div id="c-presets" class="flex flex-wrap gap-1.5 mt-3"></div>
+      </div>
+      <div id="c-msg" class="hidden py-10 text-center text-sm text-slate-500"></div>
+      <div id="c-body" class="hidden space-y-4">
+        <div id="c-kpis" class="grid grid-cols-2 lg:grid-cols-6 gap-3"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="card p-4"><h3 class="text-sm font-semibold text-slate-700">แนวโน้มรายวัน</h3><div id="c-trend"></div></div>
+          <div class="card p-4">
+            <div class="flex justify-between items-center gap-2 mb-1">
+              <h3 class="text-sm font-semibold text-slate-700">สิ่งที่ควรแก้ไข (จำนวนเคส)</h3>
+              <select id="c-grp" class="sel" onchange="renderCaseMiss()">
+                <option value="doctor">แพทย์ (PE + Dx)</option><option value="nurse">พยาบาล</option><option value="card">ออกบัตร</option><option value="all">ทั้งหมด</option>
+              </select>
+            </div>
+            <div id="c-miss"></div>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+            <h3 class="text-sm font-semibold text-slate-700">รายเคส <span id="c-count" class="text-slate-400 font-normal"></span></h3>
+            <div class="flex gap-2 items-center">
+              <input id="c-hn" class="sel w-32" placeholder="ค้นหา HN" oninput="applyCaseFilters()">
+              <button class="btns" onclick="exportCases()">📊 Excel</button>
+              <button class="btns" onclick="exportCasesCSV()">📑 CSV</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto"><table class="min-w-full"><thead><tr>
+            <th class="thc text-left">วันที่</th><th class="thc text-left">เวลา</th><th class="thc text-left">HN</th>
+            <th class="thc text-left" id="c-th-doc">แพทย์</th><th class="thc text-left">คลินิก</th>
+            <th class="thc">PE</th><th class="thc">Dx</th><th class="thc">พยบ</th><th class="thc">บัตร</th><th class="thc">เฉลี่ย</th><th class="thc text-left">ที่ต้องแก้</th></tr></thead>
+            <tbody id="c-rows"></tbody></table></div>
+          <div id="c-pager" class="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ผู้ใช้งาน (แอดมิน) ===== -->
+    <div id="pane-users" class="hidden">
+      <div class="card overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+          <h3 class="text-sm font-semibold text-slate-700">👥 ผู้ใช้งานและคำขอสิทธิ์</h3>
+          <button class="btns" onclick="loadUsers()">🔄 รีเฟรช</button>
+        </div>
+        <div class="overflow-x-auto"><table class="min-w-full"><thead><tr>
+          <th class="thc text-left">อีเมล</th><th class="thc text-left">ชื่อ</th><th class="thc text-left">เลข ว.</th><th class="thc text-left">บทบาท</th><th class="thc text-left">สถานะ</th><th class="thc text-left">จัดการ</th></tr></thead>
+          <tbody id="u-body"></tbody></table></div>
+      </div>
+      <p class="text-xs text-slate-500 mt-2">ตรวจให้แน่ใจว่าอีเมลและชื่อตรงกับตัวบุคคลก่อนกด "อนุมัติ" — เลข ว. เป็นข้อมูลที่เปิดเผยอยู่แล้วในแดชบอร์ดหลัก</p>
+    </div>
+
+    <!-- ===== คู่มือ ===== -->
+    <div id="pane-guide" class="hidden card p-5 sm:p-6 space-y-4 text-sm text-slate-700 leading-relaxed">
+      <h2 class="text-lg font-semibold text-slate-800">📖 วิธีอ่านคะแนนการบันทึกเวชระเบียน</h2>
+      <p>ระบบคำนวณคะแนนต่อ 1 แถว = 1 visit × แพทย์ 1 คน ทุกเช้า (ประมาณ 04:30 น.) สำหรับเมื่อวาน ค่าที่ถือว่า "มีข้อมูล" คือช่องที่ <b>ไม่ว่าง</b> และ <b>ไม่ใช่ข้อความ null</b> (ค่า 0 และ "-" นับว่ามีข้อมูล)</p>
+      <div class="overflow-x-auto"><table class="min-w-full text-sm">
+        <thead><tr><th class="thc text-left">คะแนน</th><th class="thc text-left">วิธีคิด</th><th class="thc text-left">ผู้รับผิดชอบ</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr><td class="py-2 px-3 font-medium">ออกบัตร</td><td class="py-2 px-3">ช่องที่มีข้อมูล ÷ 23 (hn, visit, เวลา, วันที่, คำนำหน้า, ชื่อ, สกุล, เลขบัตร, เพศ, วันเกิด, อายุ, สัญชาติ, สถานภาพ, ที่อยู่, หมู่, ตำบล, จังหวัด, อำเภอ, อาชีพ, ญาติ, ความสัมพันธ์, ที่อยู่ญาติ, เบอร์ญาติ)</td><td class="py-2 px-3">เจ้าหน้าที่ลงทะเบียน</td></tr>
+          <tr><td class="py-2 px-3 font-medium">พยบ</td><td class="py-2 px-3">ช่องที่มีข้อมูล ÷ 6 (น้ำหนัก, ส่วนสูง, BP ตัวบน/ล่าง, อุณหภูมิ, อาการสำคัญ)</td><td class="py-2 px-3">พยาบาลคัดกรอง</td></tr>
+          <tr><td class="py-2 px-3 font-medium">PE (ตรวจร่างกาย)</td><td class="py-2 px-3">นับ 16 ช่อง (GA, HEENT, HEART, LUNG, Ab, Ext, Neuro, Normal_* 6 ช่อง, Other, Normal_GA, Normal_Other) — มีข้อมูล <b>≥ 2 ช่อง = 100%</b>, 1 ช่อง = 50%, ไม่มี = 0%</td><td class="py-2 px-3">แพทย์</td></tr>
+          <tr><td class="py-2 px-3 font-medium">Dx (การวินิจฉัย)</td><td class="py-2 px-3">มีบันทึกการวินิจฉัย (D_DiagNote) = 100% ไม่มี = 0% (ทันตกรรมใช้รหัสวินิจฉัยของทันตกรรมแทนเมื่อว่าง)</td><td class="py-2 px-3">แพทย์</td></tr>
+          <tr><td class="py-2 px-3 font-medium">เฉลี่ย</td><td class="py-2 px-3">ค่าเฉลี่ยของ 4 คะแนนข้างต้น</td><td class="py-2 px-3">—</td></tr>
+        </tbody></table></div>
+      <ul class="list-disc pl-5 space-y-1">
+        <li><b>สีคะแนน:</b> เขียว ≥ 90% · เหลือง 70–89.9% · แดง &lt; 70%</li>
+        <li><b>แพทย์:</b> เปิดแท็บ "รายงานของฉัน" กรอง "ส่วนแพทย์ไม่ครบ (PE/Dx)" จะเห็น HN ที่ต้องกลับไปแก้ พร้อมป้ายบอกสิ่งที่ขาด</li>
+        <li><b>ข้อมูลอัปเดตวันละครั้ง</b> เคสที่แก้ไขในวันนี้จะเห็นผลในเช้าวันถัดไป (ถ้าตั้งให้ย้อนหลัง จะอัปเดตเคสเก่าด้วย)</li>
+        <li><b>ความเป็นส่วนตัว:</b> หน้านี้แสดงเฉพาะ HN, เวลา, คลินิก และคะแนน — ไม่มีชื่อผู้ป่วย เลขบัตร ที่อยู่ หรือเนื้อหาเวชระเบียน แพทย์เห็นเฉพาะเคสของตนเอง</li>
+        <li>คะแนนเป็นเครื่องมือตรวจ <b>ความครบของการกรอก</b> ไม่ได้ประเมินคุณภาพทางคลินิกของเนื้อหา</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<script>
+// ===================== CONFIG =====================
+const SB_URL = 'https://gjnypronlrhpykdiaxdi.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdqbnlwcm9ubHJocHlrZGlheGRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMjYyMTEsImV4cCI6MjEwNTcwMjIxMX0.0mgbmX6b948h1Fl9diw6ijvIt4gnvy_6FkkffuGY_q8';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+// ===================== UTIL =====================
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
+const P = v => (v === null || v === undefined || isNaN(v)) ? '–' : (v * 100).toFixed(1) + '%';
+const mean = a => { const x = a.filter(v => v !== null && v !== undefined && !isNaN(v)); return x.length ? x.reduce((s, v) => s + v, 0) / x.length : null; };
+const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const tDate = iso => { if (!iso) return '-'; const [y, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}/${+y + 543}`; };
+const sDate = iso => { const [, m, d] = String(iso).split('-'); return `${d}/${m}`; };
+const bandTxt = v => v === null ? 'text-slate-400' : v >= .9 ? 'text-emerald-600' : v >= .7 ? 'text-amber-600' : 'text-rose-600';
+const bandBg = v => v === null ? 'bg-slate-100 text-slate-500' : v >= .9 ? 'bg-emerald-100 text-emerald-700' : v >= .7 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700';
+const chip = v => `<span class="px-2 py-0.5 rounded-md text-[11px] font-medium ${bandBg(v)}">${P(v)}</span>`;
+const tag = (t, cls, title = '') => `<span class="px-1.5 py-0.5 rounded text-[11px] ${cls}" title="${esc(title)}">${esc(t)}</span>`;
+const msg = (id, t, ok = false) => { const e = $(id); e.textContent = t || ''; e.className = 'text-sm mt-3 text-center ' + (ok ? 'text-emerald-600' : 'text-rose-600'); };
+const sk = '<div class="h-24 rounded-xl bg-slate-100 animate-pulse"></div>';
+
+async function fetchAll(build, size = 1000) {
+  const out = []; let from = 0;
+  for (;;) {
+    const { data, error } = await build().range(from, from + size - 1);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < size) break;
+    from += size;
+  }
+  return out;
+}
+
+const CH = {};
+const AX = { style: { colors: '#94a3b8', fontSize: '11px' } };
+const baseChart = (type, h) => ({ type, height: h, fontFamily: 'Kanit,sans-serif', toolbar: { show: false }, zoom: { enabled: false } });
+function draw(id, opt) { if (CH[id]) CH[id].destroy(); $(id).innerHTML = ''; CH[id] = new ApexCharts($(id), opt); CH[id].render(); }
+function hbar(id, labels, vals, colors, fmt, xmax) {
+  draw(id, {
+    chart: baseChart('bar', Math.max(220, labels.length * 30 + 50)), series: [{ name: '', data: vals }],
+    plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 4, barHeight: '60%' } },
+    colors, legend: { show: false }, dataLabels: { enabled: true, formatter: fmt, style: { fontSize: '11px' } },
+    xaxis: { categories: labels, max: xmax, labels: AX, axisBorder: { show: false } },
+    yaxis: { labels: { maxWidth: 220, style: { colors: '#475569', fontSize: '12px' } } },
+    grid: { borderColor: '#f1f5f9', strokeDashArray: 4, yaxis: { lines: { show: false } } }, tooltip: { y: { formatter: fmt } }
+  });
+}
+function lineChart(id, days, series, colors) {
+  draw(id, {
+    chart: baseChart('line', 280), series, colors, stroke: { curve: 'smooth', width: series.map((s, i) => i === series.length - 1 ? 3 : 2) },
+    markers: { size: days.length <= 31 ? 3 : 0, strokeWidth: 0 }, dataLabels: { enabled: false },
+    xaxis: { categories: days, tickAmount: Math.min(days.length, 10), axisBorder: { show: false }, axisTicks: { show: false }, tooltip: { enabled: false }, labels: { ...AX, rotate: 0, hideOverlappingLabels: true, formatter: v => sDate(String(v)) } },
+    yaxis: { min: 0, max: 100, tickAmount: 5, labels: { ...AX, formatter: v => Math.round(v) + '%' } },
+    grid: { borderColor: '#f1f5f9', strokeDashArray: 4, xaxis: { lines: { show: false } } },
+    legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px' },
+    tooltip: { shared: true, intersect: false, x: { formatter: (v, o) => tDate(days[o.dataPointIndex]) }, y: { formatter: v => v === null ? '–' : v.toFixed(1) + '%' } }
+  });
+}
+const kpi = (label, value, sub, cls = 'text-slate-800') => `<div class="card p-3"><p class="text-[11px] text-slate-500">${label}</p><p class="text-xl sm:text-2xl font-semibold mt-1 tabular-nums ${cls}">${value}</p><p class="text-[11px] text-slate-400 mt-0.5">${sub || '&nbsp;'}</p></div>`;
+
+// ===================== EXPORT =====================
+function saveBlob(blob, name) {
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; a.style.display = 'none'; document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+}
+function addSheet(wb, name, headers, rows, widths = [], pctCols = []) {
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = headers.map((h, i) => ({ wch: widths[i] || Math.max(10, String(h).length + 4) }));
+  if (rows.length) ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: headers.length - 1 } }) };
+  pctCols.forEach(c => { for (let r = 1; r <= rows.length; r++) { const cell = ws[XLSX.utils.encode_cell({ r, c })]; if (cell && typeof cell.v === 'number') cell.z = '0.0%'; } });
+  XLSX.utils.book_append_sheet(wb, ws, name);
+}
+function saveWb(wb, name) {
+  try {
+    const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveBlob(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
+    if (/Line\/|FBAN|FBAV|Instagram/i.test(navigator.userAgent)) alert('หากไฟล์ไม่ดาวน์โหลด: เบราว์เซอร์ใน LINE/Facebook บล็อกการดาวน์โหลด กรุณาเปิดด้วย Chrome/Safari');
+  } catch (e) { alert('Export ไม่สำเร็จ: ' + e.message + '\nลองใช้ปุ่ม CSV'); }
+}
+
+// ===================== AUTH =====================
+const SCREENS = ['loading', 'auth', 'claim', 'pending', 'reset', 'app'];
+const show = n => SCREENS.forEach(s => $('screen-' + s).classList.toggle('hidden', s !== n));
+let curUid = null, ME = null;
+
+function authTab(t) {
+  $('f-login').classList.toggle('hidden', t !== 'login'); $('f-signup').classList.toggle('hidden', t !== 'signup');
+  $('at-login').className = 'tabb flex-1' + (t === 'login' ? ' tabb-on' : ''); $('at-signup').className = 'tabb flex-1' + (t === 'signup' ? ' tabb-on' : '');
+  msg('auth-msg', '');
+}
+function signupKind() { const d = $('s-kind').value === 'doctor'; $('s-doc-wrap').classList.toggle('hidden', !d); $('s-name-wrap').classList.toggle('hidden', d); }
+function claimKind() { const d = $('cl-kind').value === 'doctor'; $('cl-doc-wrap').classList.toggle('hidden', !d); $('cl-name-wrap').classList.toggle('hidden', d); }
+function makeLookup(inputId, outId) {
+  let t; return () => { clearTimeout(t); t = setTimeout(async () => {
+    const c = $(inputId).value.trim(), el = $(outId);
+    if (!c) { el.textContent = ''; return; }
+    const { data } = await sb.rpc('lookup_doctor', { p_code: c });
+    el.innerHTML = data ? `✅ พบ: <b>${esc(data)}</b>` : '❌ ไม่พบเลข ว. นี้ในข้อมูล';
+    el.className = 'text-xs mt-1 ' + (data ? 'text-emerald-600' : 'text-rose-600');
+  }, 400); };
+}
+const lookupName = makeLookup('s-code', 's-found'), claimLookup = makeLookup('cl-code', 'cl-found');
+
+async function doLogin(ev) {
+  ev.preventDefault(); msg('auth-msg', '');
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-pass').value });
+  if (error) msg('auth-msg', /invalid/i.test(error.message) ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : error.message);
+}
+async function doSignup(ev) {
+  ev.preventDefault(); msg('auth-msg', '');
+  const kind = $('s-kind').value, code = $('s-code').value.trim(), name = $('s-name').value.trim();
+  const email = $('s-email').value.trim(), pw = $('s-pass').value;
+  if (pw.length < 8) return msg('auth-msg', 'รหัสผ่านต้องอย่างน้อย 8 ตัวอักษร');
+  if (pw !== $('s-pass2').value) return msg('auth-msg', 'รหัสผ่านไม่ตรงกัน');
+  if (kind === 'doctor') {
+    if (!code) return msg('auth-msg', 'กรุณากรอกเลข ว.');
+    const { data } = await sb.rpc('lookup_doctor', { p_code: code });
+    if (!data) return msg('auth-msg', 'ไม่พบเลข ว. นี้ในข้อมูล');
+  } else if (!name) return msg('auth-msg', 'กรุณากรอกชื่อ-นามสกุล');
+  const { data, error } = await sb.auth.signUp({ email, password: pw, options: { data: { req_kind: kind, doc_code: code || null, full_name: name || null } } });
+  if (error) return msg('auth-msg', error.message);
+  if (!data.session) { authTab('login'); msg('auth-msg', 'สมัครแล้ว — กรุณาตรวจอีเมลเพื่อยืนยัน แล้วเข้าสู่ระบบ', true); }
+}
+async function doForgot() {
+  const email = $('l-email').value.trim();
+  if (!email) return msg('auth-msg', 'กรอกอีเมลก่อน');
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  msg('auth-msg', error ? error.message : 'ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลแล้ว', !error);
+}
+async function doReset() {
+  const pw = $('r-pass').value;
+  if (pw.length < 8) return msg('r-msg', 'รหัสผ่านต้องอย่างน้อย 8 ตัวอักษร');
+  const { error } = await sb.auth.updateUser({ password: pw });
+  if (error) return msg('r-msg', error.message);
+  msg('r-msg', 'เปลี่ยนรหัสผ่านแล้ว', true); setTimeout(() => route(), 800);
+}
+async function doLogout() { await sb.auth.signOut(); }
+async function doClaim() {
+  const kind = $('cl-kind').value;
+  const { error } = await sb.rpc('request_access', { p_kind: kind, p_doc_code: kind === 'doctor' ? $('cl-code').value.trim() : null });
+  if (error) { $('claim-msg').textContent = error.message; return; }
+  route();
+}
+const recheck = () => route();
+
+sb.auth.onAuthStateChange((ev, session) => {
+  if (ev === 'PASSWORD_RECOVERY') { show('reset'); return; }
+  if (ev === 'SIGNED_OUT') { curUid = null; ME = null; show('auth'); return; }
+  if (session && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) {
+    if (session.user.id !== curUid) { curUid = session.user.id; setTimeout(() => route(), 0); }
+  } else if (ev === 'INITIAL_SESSION') show('auth');
+});
+
+async function route() {
+  show('loading');
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return show('auth');
+  const user = session.user;
+  let { data: prof } = await sb.from('app_users').select('*').eq('id', user.id).maybeSingle();
+  if (!prof) {
+    const md = user.user_metadata || {};
+    if (md.req_kind) {
+      const r = await sb.rpc('request_access', { p_kind: md.req_kind, p_doc_code: md.doc_code || null });
+      if (!r.error) ({ data: prof } = await sb.from('app_users').select('*').eq('id', user.id).maybeSingle());
+      else $('claim-msg').textContent = r.error.message;
+    }
+  }
+  if (!prof) { $('claim-email').textContent = user.email; return show('claim'); }
+  ME = { ...prof, email: user.email };
+  if (prof.status !== 'active') {
+    const st = { pending: ['⏳', 'รอผู้ดูแลระบบอนุมัติ'], rejected: ['⛔', 'คำขอไม่ได้รับการอนุมัติ'], disabled: ['⛔', 'บัญชีถูกระงับ'] }[prof.status] || ['', prof.status];
+    $('pend-body').innerHTML = `<p class="text-4xl">${st[0]}</p><h2 class="font-semibold text-slate-800 mt-2">${st[1]}</h2>
+      <p class="text-sm text-slate-500 mt-2">${esc(user.email)}<br>${prof.role === 'doctor' ? `เลข ว. ${esc(prof.doc_code)} — ${esc(prof.display_name)}` : esc(prof.display_name || '')}</p>
+      ${prof.status === 'pending' ? '<p class="text-xs text-slate-400 mt-2">เมื่ออนุมัติแล้ว กด "ตรวจสอบสถานะ" เพื่อเข้าใช้งาน</p>' : ''}`;
+    return show('pending');
+  }
+  startApp();
+}
+
+// ===================== APP SHELL =====================
+const PRESETS = [['7', '7 วันล่าสุด'], ['30', '30 วันล่าสุด'], ['month', 'เดือนล่าสุด'], ['lastmonth', 'เดือนก่อนหน้า'], ['all', 'ทั้งหมด']];
+let DMIN = '', DMAX = '', CLINICS = [], loaded = {};
+
+async function startApp() {
+  show('app'); loaded = {};
+  $('who').textContent = ME.display_name || ME.email;
+  $('who-role').textContent = { doctor: 'แพทย์', exec: 'ผู้บริหาร', admin: 'ผู้ดูแลระบบ' }[ME.role];
+  const isDoc = ME.role === 'doctor';
+  const tabs = isDoc ? [['cases', '📋 รายงานของฉัน'], ['guide', '📖 คู่มือ']] : [['exec', '📈 ภาพรวมผู้บริหาร'], ['cases', '🔎 รายเคส'], ['guide', '📖 คู่มือ']];
+  if (ME.role === 'admin') tabs.splice(2, 0, ['users', '👥 ผู้ใช้งาน']);
+  $('nav').innerHTML = tabs.map(([k, t]) => `<button id="nt-${k}" onclick="goTab('${k}')" class="tabb">${t}</button>`).join('');
+  $('c-doc-wrap').classList.toggle('hidden', isDoc); $('c-th-doc').classList.toggle('hidden', isDoc);
+  $('c-note').classList.toggle('hidden', !isDoc);
+  await initRange();
+  goTab(tabs[0][0]);
+}
+
+async function initRange() {
+  const a = await sb.from('opd_visit_detail').select('regist_date').order('regist_date', { ascending: true }).limit(1);
+  const b = await sb.from('opd_visit_detail').select('regist_date').order('regist_date', { ascending: false }).limit(1);
+  DMIN = a.data?.[0]?.regist_date || ''; DMAX = b.data?.[0]?.regist_date || '';
+  ['c', 'x'].forEach(p => {
+    $(p + '-presets').innerHTML = '<span class="text-[11px] text-slate-400 mr-1">ช่วงเร็ว:</span>' + PRESETS.map(([k, t]) => `<button class="btns" onclick="preset('${p}','${k}')">${t}</button>`).join('');
+    applyPreset(p, '30');
+  });
+  if (DMAX) {
+    try {
+      const rows = await fetchAll(() => sb.from('opd_quality_daily').select('clinic').gte('regist_date', addDays(DMAX, -89))
+        .order('regist_date').order('clinic').order('doc_code').order('doc_name'));
+      CLINICS = [...new Set(rows.map(r => r.clinic).filter(Boolean))].sort();
+    } catch (e) { CLINICS = []; }
+  }
+  const opts = '<option value="">ทุกคลินิก</option>' + CLINICS.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  $('c-clinic').innerHTML = opts; $('x-clinic').innerHTML = opts;
+}
+function applyPreset(p, k) {
+  if (!DMAX) return;
+  let s = DMAX, e = DMAX;
+  if (k === '7') s = addDays(DMAX, -6); else if (k === '30') s = addDays(DMAX, -29);
+  else if (k === 'month') s = DMAX.slice(0, 8) + '01';
+  else if (k === 'lastmonth') { e = addDays(DMAX.slice(0, 8) + '01', -1); s = e.slice(0, 8) + '01'; }
+  else if (k === 'all') s = DMIN;
+  if (DMIN && s < DMIN) s = DMIN;
+  $(p + '-start').value = s; $(p + '-end').value = e;
+}
+function preset(p, k) { applyPreset(p, k); p === 'x' ? loadExec() : loadCases(); }
+
+function goTab(k) {
+  ['exec', 'cases', 'users', 'guide'].forEach(t => { const el = $('pane-' + t); if (el) el.classList.toggle('hidden', t !== k); const b = $('nt-' + t); if (b) b.className = 'tabb' + (t === k ? ' tabb-on' : ''); });
+  if (!loaded[k]) {
+    loaded[k] = true;
+    if (k === 'exec') loadExec(); else if (k === 'cases') loadCases(); else if (k === 'users') loadUsers();
+  }
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+}
+
+// ===================== CASES (รายเคส / รายงานของฉัน) =====================
+let CR = [], CF = [], cPage = 0;
+const CASE_COLS = 'regist_date,visit_time,hn,visit,clinic,doc_code,doc_name,is_completed_a,score_card,score_nurse,score_pe,score_dx,score_avg,card_missing,nurse_missing,pe_missing';
+const SCORE_KEYS = ['score_card', 'score_nurse', 'score_pe', 'score_dx', 'score_avg'];
+
+async function loadCases() {
+  const s = $('c-start').value, e = $('c-end').value;
+  const kw = ($('c-doc').value || '').trim().replace(/[,()%*\\]/g, '');
+  if (!DMAX) { $('c-msg').textContent = 'ยังไม่มีข้อมูลในระบบ'; $('c-msg').classList.remove('hidden'); $('c-body').classList.add('hidden'); return; }
+  if (!s || !e || s > e) return alert('กรุณาเลือกช่วงวันที่ให้ถูกต้อง');
+  $('c-msg').innerHTML = '<span class="spinner"></span>กำลังโหลด...'; $('c-msg').classList.remove('hidden'); $('c-body').classList.add('hidden');
+  try {
+    CR = await fetchAll(() => {
+      let q = sb.from('opd_visit_detail').select(CASE_COLS).gte('regist_date', s).lte('regist_date', e)
+        .order('regist_date').order('hn').order('visit').order('doc_code');
+      if (kw) q = q.or(`doc_code.ilike.%${kw}%,doc_name.ilike.%${kw}%`);
+      return q;
+    });
+  } catch (err) { $('c-msg').textContent = '❌ ' + err.message; return; }
+  CR.forEach(r => SCORE_KEYS.forEach(k => r[k] = num(r[k])));
+  if (!CR.length) { $('c-msg').textContent = 'ไม่พบข้อมูลในช่วงที่เลือก'; return; }
+  $('c-msg').classList.add('hidden'); $('c-body').classList.remove('hidden');
+  applyCaseFilters();
+}
+
+function applyCaseFilters() {
+  const cl = $('c-clinic').value, mode = $('c-mode').value, kw = $('c-hn').value.trim().toLowerCase();
+  CF = CR.filter(r => (!cl || r.clinic === cl)
+    && (mode === 'all' || (mode === 'doc' ? (r.score_pe < 1 || r.score_dx < 1) : r.score_avg < 1))
+    && (!kw || String(r.hn).toLowerCase().includes(kw)));
+  cPage = 0; renderCases();
+}
+
+function renderCases() {
+  const n = CF.length;
+  $('c-kpis').innerHTML = [
+    kpi('จำนวนเคส', n.toLocaleString(), `จากทั้งหมด ${CR.length.toLocaleString()}`),
+    kpi('PE (แพทย์)', P(mean(CF.map(r => r.score_pe))), '', bandTxt(mean(CF.map(r => r.score_pe)))),
+    kpi('Dx (แพทย์)', P(mean(CF.map(r => r.score_dx))), '', bandTxt(mean(CF.map(r => r.score_dx)))),
+    kpi('เฉลี่ยรวม', P(mean(CF.map(r => r.score_avg))), '', bandTxt(mean(CF.map(r => r.score_avg)))),
+    kpi('ออกบัตร', P(mean(CF.map(r => r.score_card))), 'ข้อมูลประกอบ', 'text-slate-600'),
+    kpi('พยบ', P(mean(CF.map(r => r.score_nurse))), 'ข้อมูลประกอบ', 'text-slate-600')
+  ].join('');
+  const days = [...new Set(CF.map(r => r.regist_date))].sort();
+  const by = d => CF.filter(r => r.regist_date === d);
+  const ser = (name, k) => ({ name, data: days.map(d => { const v = mean(by(d).map(r => r[k])); return v === null ? null : +(v * 100).toFixed(1); }) });
+  lineChart('c-trend', days, [ser('PE', 'score_pe'), ser('Dx', 'score_dx'), ser('เฉลี่ยรวม', 'score_avg')], ['#6366f1', '#f59e0b', '#10b981']);
+  renderCaseMiss(); renderCaseRows();
+}
+
+function renderCaseMiss() {
+  const grp = $('c-grp').value, m = new Map(), add = k => m.set(k, (m.get(k) || 0) + 1);
+  CF.forEach(r => {
+    if (grp === 'doctor' || grp === 'all') {
+      if (r.score_dx === 0) add('Dx: ไม่มีการวินิจฉัย');
+      if (r.score_pe === 0) add('PE: ไม่มีข้อมูลเลย'); else if (r.score_pe === 0.5) add('PE: ขาดอีก 1 ช่อง');
+    }
+    if (grp === 'nurse' || grp === 'all') (r.nurse_missing || '').split(',').filter(Boolean).forEach(f => add('พยบ: ' + f));
+    if (grp === 'card' || grp === 'all') (r.card_missing || '').split(',').filter(Boolean).forEach(f => add('บัตร: ' + f));
+  });
+  const top = [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  if (!top.length) { if (CH['c-miss']) { CH['c-miss'].destroy(); delete CH['c-miss']; } $('c-miss').innerHTML = '<p class="py-10 text-center text-emerald-600 text-sm">🎉 ไม่พบรายการที่ขาด</p>'; return; }
+  hbar('c-miss', top.map(t => t[0]), top.map(t => t[1]), top.map(() => '#f43f5e'), v => Math.round(v).toLocaleString() + ' เคส');
+}
+
+function renderCaseRows() {
+  const per = 50, pages = Math.max(1, Math.ceil(CF.length / per)), isDoc = ME.role === 'doctor';
+  cPage = Math.min(cPage, pages - 1);
+  $('c-count').textContent = `(${CF.length.toLocaleString()} เคส)`;
+  $('c-rows').innerHTML = CF.slice(cPage * per, cPage * per + per).map(r => {
+    const t = [];
+    if (r.score_dx === 0) t.push(tag('Dx ไม่มี', 'bg-rose-100 text-rose-700'));
+    if (r.score_pe === 0) t.push(tag('PE ไม่มีข้อมูล', 'bg-rose-100 text-rose-700'));
+    else if (r.score_pe === 0.5) t.push(tag('PE ขาดอีก 1 ช่อง', 'bg-amber-100 text-amber-700'));
+    if (r.nurse_missing) t.push(tag('พยบ: ' + r.nurse_missing, 'bg-slate-100 text-slate-600', 'ช่องที่ขาด'));
+    if (r.card_missing) t.push(tag(`บัตร: ${r.card_missing.split(',').length} ช่อง`, 'bg-slate-100 text-slate-600', r.card_missing.split(',').join(', ')));
+    return `<tr class="border-t border-slate-100 hover:bg-slate-50">
+      <td class="tdc text-left">${tDate(r.regist_date)}</td><td class="tdc text-left">${esc(r.visit_time || '')}</td><td class="tdc text-left font-medium">${esc(r.hn)}</td>
+      ${isDoc ? '' : `<td class="tdc text-left">${esc(r.doc_name)}</td>`}<td class="tdc text-left">${esc(r.clinic)}</td>
+      <td class="tdc">${chip(r.score_pe)}</td><td class="tdc">${chip(r.score_dx)}</td><td class="tdc">${chip(r.score_nurse)}</td><td class="tdc">${chip(r.score_card)}</td>
+      <td class="tdc">${chip(r.score_avg)}</td><td class="py-2 px-3 text-left"><div class="flex flex-wrap gap-1 max-w-[340px]">${t.join('') || '<span class="text-emerald-600 text-xs">✓ ครบ</span>'}</div></td></tr>`;
+  }).join('') || '<tr><td colspan="11" class="py-8 text-center text-slate-400">ไม่มีเคสตามเงื่อนไข</td></tr>';
+  $('c-pager').innerHTML = `<span>หน้า ${cPage + 1} / ${pages}</span><div class="flex gap-2">
+    <button class="btns" ${cPage === 0 ? 'disabled style="opacity:.4"' : ''} onclick="cPage--;renderCaseRows()">← ก่อนหน้า</button>
+    <button class="btns" ${cPage >= pages - 1 ? 'disabled style="opacity:.4"' : ''} onclick="cPage++;renderCaseRows()">ถัดไป →</button></div>`;
+}
+
+function caseTable() {
+  return CF.map(r => [r.regist_date, r.visit_time, r.hn, r.visit, r.clinic, r.doc_code, r.doc_name, r.score_pe, r.score_dx, r.score_nurse, r.score_card, r.score_avg, r.pe_missing, r.nurse_missing, r.card_missing]);
+}
+const CASE_HEAD = ['วันที่', 'เวลา', 'HN', 'Visit', 'คลินิก', 'ว.', 'แพทย์', 'PE', 'Dx', 'พยบ', 'ออกบัตร', 'เฉลี่ย', 'PE ที่ขาด', 'พยบ ที่ขาด', 'ออกบัตร ที่ขาด'];
+function exportCases() {
+  if (!CF.length) return alert('ไม่มีข้อมูลให้ Export');
+  const wb = XLSX.utils.book_new();
+  addSheet(wb, 'รายเคส', CASE_HEAD, caseTable(), [12, 8, 12, 8, 24, 8, 24, 8, 8, 8, 10, 8, 40, 30, 40], [7, 8, 9, 10, 11]);
+  const days = [...new Set(CF.map(r => r.regist_date))].sort();
+  addSheet(wb, 'สรุปรายวัน', ['วันที่', 'จำนวนเคส', 'PE', 'Dx', 'พยบ', 'ออกบัตร', 'เฉลี่ย'],
+    days.map(d => { const rs = CF.filter(r => r.regist_date === d); return [d, rs.length, mean(rs.map(r => r.score_pe)), mean(rs.map(r => r.score_dx)), mean(rs.map(r => r.score_nurse)), mean(rs.map(r => r.score_card)), mean(rs.map(r => r.score_avg))]; }),
+    [12, 12, 8, 8, 8, 10, 8], [2, 3, 4, 5, 6]);
+  saveWb(wb, `OPD_Quality_Cases_${$('c-start').value}_to_${$('c-end').value}.xlsx`);
+}
+function exportCasesCSV() {
+  if (!CF.length) return alert('ไม่มีข้อมูลให้ Export');
+  const cell = v => { if (v === null || v === undefined) return ''; const s = String(v); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const rows = caseTable().map(r => r.map((v, i) => [7, 8, 9, 10, 11].includes(i) && v !== null ? +(v * 100).toFixed(1) : v));
+  saveBlob(new Blob(['\ufeff' + [CASE_HEAD, ...rows].map(r => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' }), `OPD_Quality_Cases_${$('c-start').value}_to_${$('c-end').value}.csv`);
+}
+
+// ===================== EXEC (ภาพรวมผู้บริหาร) =====================
+let X = { daily: [], miss: [], hour: [], staff: [], allDocs: false, docs: [], clinics: [] };
+const DKEYS = ['n_cases', 'completed_a', 'avg_card', 'avg_nurse', 'avg_pe', 'avg_dx', 'avg_all'];
+
+function wavg(rows, k) { let s = 0, n = 0; rows.forEach(r => { const v = r[k]; if (v !== null && !isNaN(v)) { s += v * r.n_cases; n += r.n_cases; } }); return n ? s / n : null; }
+const aggr = rs => ({ n: rs.reduce((s, r) => s + r.n_cases, 0), card: wavg(rs, 'avg_card'), nurse: wavg(rs, 'avg_nurse'), pe: wavg(rs, 'avg_pe'), dx: wavg(rs, 'avg_dx'), all: wavg(rs, 'avg_all') });
+function groupBy(rows, f) { const m = new Map(); rows.forEach(r => { const k = f(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); }); return m; }
+
+async function loadExec() {
+  const s = $('x-start').value, e = $('x-end').value, cl = $('x-clinic').value;
+  if (!DMAX) { $('x-msg').textContent = 'ยังไม่มีข้อมูลในระบบ'; $('x-msg').classList.remove('hidden'); return; }
+  if (!s || !e || s > e) return alert('กรุณาเลือกช่วงวันที่ให้ถูกต้อง');
+  $('x-msg').innerHTML = '<span class="spinner"></span>กำลังโหลด...'; $('x-msg').classList.remove('hidden'); $('x-body').classList.add('hidden');
+  try {
+    const args = { p_start: s, p_end: e, p_clinic: cl || null };
+    const [daily, miss, hour, staff] = await Promise.all([
+      fetchAll(() => { let q = sb.from('opd_quality_daily').select('*').gte('regist_date', s).lte('regist_date', e).order('regist_date').order('clinic').order('doc_code').order('doc_name'); if (cl) q = q.eq('clinic', cl); return q; }),
+      sb.rpc('opd_missing_summary', args), sb.rpc('opd_hourly_summary', args), sb.rpc('opd_staff_summary', args)
+    ]);
+    for (const r of [miss, hour, staff]) if (r.error) throw r.error;
+    daily.forEach(r => DKEYS.forEach(k => r[k] = num(r[k])));
+    X = { ...X, daily, miss: miss.data, hour: hour.data, staff: staff.data, s, e, cl, allDocs: false };
+  } catch (err) { $('x-msg').textContent = '❌ ' + err.message; return; }
+  if (!X.daily.length) { $('x-msg').textContent = 'ไม่พบข้อมูลในช่วงที่เลือก'; return; }
+  $('x-msg').classList.add('hidden'); $('x-body').classList.remove('hidden');
+  renderExec();
+}
+
+function renderExec() {
+  const D = X.daily; if (!D.length) return;
+  const thr = +$('x-thr').value / 100, minN = +$('x-min').value, T = aggr(D);
+  X.docs = [...groupBy(D, r => r.doc_code).entries()].map(([code, rs]) => ({ code, name: rs[rs.length - 1].doc_name, ...aggr(rs) }));
+  X.clinics = [...groupBy(D, r => r.clinic).entries()].map(([name, rs]) => ({ name, ...aggr(rs) })).sort((a, b) => (a.all ?? 9) - (b.all ?? 9));
+  const elig = X.docs.filter(d => d.n >= minN), low = elig.filter(d => d.all !== null && d.all < thr);
+  $('x-sub').textContent = `${tDate(X.s)} – ${tDate(X.e)} · ${X.cl || 'ทุกคลินิก'} · คะแนนรวมถ่วงน้ำหนักด้วยจำนวนเคส (แถว = visit × แพทย์)`;
+  $('x-kpis').innerHTML = [
+    kpi('จำนวนเคส', T.n.toLocaleString(), `แพทย์ ${X.docs.length} คน`),
+    kpi('ออกบัตร', P(T.card), 'เจ้าหน้าที่ลงทะเบียน', bandTxt(T.card)), kpi('พยบ', P(T.nurse), 'พยาบาลคัดกรอง', bandTxt(T.nurse)),
+    kpi('PE', P(T.pe), 'แพทย์', bandTxt(T.pe)), kpi('Dx', P(T.dx), 'แพทย์', bandTxt(T.dx)),
+    kpi('เฉลี่ยรวม', P(T.all), `แพทย์ต่ำกว่าเกณฑ์ ${low.length}/${elig.length}`, bandTxt(T.all))
+  ].join('');
+
+  const days = [...new Set(D.map(r => r.regist_date))].sort(), byD = groupBy(D, r => r.regist_date);
+  const ser = (name, k) => ({ name, data: days.map(d => { const v = wavg(byD.get(d), k); return v === null ? null : +(v * 100).toFixed(1); }) });
+  lineChart('x-trend', days, [ser('ออกบัตร', 'avg_card'), ser('พยบ', 'avg_nurse'), ser('PE', 'avg_pe'), ser('Dx', 'avg_dx'), ser('เฉลี่ยรวม', 'avg_all')], ['#94a3b8', '#06b6d4', '#6366f1', '#f59e0b', '#10b981']);
+  const col = v => v >= .9 ? '#10b981' : v >= .7 ? '#f59e0b' : '#f43f5e';
+  hbar('x-clinic-chart', X.clinics.map(c => c.name), X.clinics.map(c => +((c.all ?? 0) * 100).toFixed(1)), X.clinics.map(c => col(c.all ?? 0)), v => v.toFixed(1) + '%', 100);
+
+  $('x-clinic-body').innerHTML = X.clinics.map(c => `<tr class="border-t border-slate-100"><td class="tdc text-left font-medium">${esc(c.name)}</td><td class="tdc">${c.n.toLocaleString()}</td><td class="tdc">${chip(c.card)}</td><td class="tdc">${chip(c.nurse)}</td><td class="tdc">${chip(c.pe)}</td><td class="tdc">${chip(c.dx)}</td><td class="tdc">${chip(c.all)}</td></tr>`).join('');
+  renderDocTable(); renderPareto();
+
+  const hrs = X.hour.filter(h => h.hr !== null && h.hr >= 0 && h.hr < 24).map(h => ({ ...h, avg_all: num(h.avg_all) }));
+  draw('x-hour', {
+    chart: baseChart('line', 280), series: [{ name: 'จำนวนเคส', type: 'column', data: hrs.map(h => Number(h.n)) }, { name: 'คะแนนเฉลี่ยรวม', type: 'line', data: hrs.map(h => h.avg_all === null ? null : +(h.avg_all * 100).toFixed(1)) }],
+    colors: ['#cbd5e1', '#10b981'], stroke: { width: [0, 3], curve: 'smooth' }, dataLabels: { enabled: false },
+    xaxis: { categories: hrs.map(h => String(h.hr).padStart(2, '0') + ':00'), labels: { ...AX, rotate: 0 }, axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: [{ labels: { ...AX, formatter: v => Math.round(v) } }, { opposite: true, min: 0, max: 100, tickAmount: 5, labels: { ...AX, formatter: v => Math.round(v) + '%' } }],
+    grid: { borderColor: '#f1f5f9', strokeDashArray: 4, xaxis: { lines: { show: false } } }, legend: { position: 'top', horizontalAlign: 'left' }
+  });
+
+  const st = g => X.staff.filter(r => r.grp === g).map(r => ({ staff: r.staff, n: Number(r.n_visits), score: num(r.avg_score) })).sort((a, b) => (a.score ?? 9) - (b.score ?? 9));
+  const stRows = a => a.map(r => `<tr class="border-t border-slate-100"><td class="tdc text-left">${esc(r.staff)}</td><td class="tdc">${r.n.toLocaleString()}</td><td class="tdc">${chip(r.score)}</td></tr>`).join('') || '<tr><td colspan="3" class="py-6 text-center text-slate-400">ไม่มีข้อมูล</td></tr>';
+  $('x-card-body').innerHTML = stRows(st('card')); $('x-nurse-body').innerHTML = stRows(st('nurse'));
+}
+
+function renderDocTable() {
+  const thr = +$('x-thr').value / 100, minN = +$('x-min').value;
+  const list = X.docs.filter(d => d.n >= minN).sort((a, b) => (a.all ?? 9) - (b.all ?? 9));
+  const shown = X.allDocs ? list : list.slice(0, 20);
+  $('x-doc-body').innerHTML = shown.map(d => `<tr class="border-t border-slate-100"><td class="tdc text-left"><span class="font-medium">${esc(d.name)}</span> <span class="text-slate-400 text-xs">${esc(d.code)}</span></td><td class="tdc">${d.n.toLocaleString()}</td><td class="tdc">${chip(d.pe)}</td><td class="tdc">${chip(d.dx)}</td><td class="tdc">${chip(d.all)}</td><td class="tdc">${d.all !== null && d.all < thr ? tag('ต่ำกว่าเกณฑ์', 'bg-rose-100 text-rose-700') : tag('ผ่านเกณฑ์', 'bg-emerald-100 text-emerald-700')}</td></tr>`).join('') || '<tr><td colspan="6" class="py-6 text-center text-slate-400">ไม่มีแพทย์ที่เคสถึงเกณฑ์ขั้นต่ำ</td></tr>';
+  const b = $('x-doc-more'); b.textContent = list.length > 20 ? (X.allDocs ? 'แสดง 20 อันดับแรก' : `ดูทั้งหมด (${list.length} คน)`) : '';
+}
+
+function renderPareto() {
+  const grp = $('x-grp').value;
+  const rows = X.miss.filter(r => grp === 'all' || r.grp === grp).map(r => ({ label: ({ card: 'บัตร', nurse: 'พยบ', pe: '', dx: '' }[r.grp] ? ({ card: 'บัตร: ', nurse: 'พยบ: ' }[r.grp]) : '') + r.field.replace(/^(PE|Dx): /, r.grp === 'pe' ? 'PE: ' : ''), n: Number(r.n), total: Number(r.total) }));
+  rows.forEach(r => { if (r.label === 'D_DiagNote') r.label = 'Dx: ไม่มีการวินิจฉัย'; });
+  const top = rows.sort((a, b) => b.n - a.n).slice(0, 12);
+  if (!top.length) { if (CH['x-pareto']) { CH['x-pareto'].destroy(); delete CH['x-pareto']; } $('x-pareto').innerHTML = '<p class="py-10 text-center text-emerald-600 text-sm">🎉 ไม่พบรายการที่ขาด</p>'; return; }
+  hbar('x-pareto', top.map(r => r.label), top.map(r => +(r.n / (r.total || 1) * 100).toFixed(1)), top.map(() => '#f43f5e'), v => v.toFixed(1) + '%', undefined);
+}
+
+function exportExec() {
+  if (!X.daily.length) return alert('กรุณาแสดงภาพรวมก่อน Export');
+  const wb = XLSX.utils.book_new(), T = aggr(X.daily), thr = +$('x-thr').value / 100;
+  const sum = [['รายงานคุณภาพการบันทึกเวชระเบียน — ผู้บริหาร'], ['ช่วงวันที่', `${tDate(X.s)} - ${tDate(X.e)}`], ['คลินิก', X.cl || 'ทุกคลินิก'], ['เกณฑ์ผ่าน', `${thr * 100}%`], ['สร้างเมื่อ', new Date().toLocaleString('th-TH')], [],
+    ['จำนวนเคส (visit × แพทย์)', T.n], ['ออกบัตร', T.card], ['พยบ', T.nurse], ['PE', T.pe], ['Dx', T.dx], ['เฉลี่ยรวม', T.all], [], ['หมายเหตุ', 'คะแนนรวมถ่วงน้ำหนักด้วยจำนวนเคส; ออกบัตร/พยบ ในตารางเจ้าหน้าที่นับต่อ visit ไม่ซ้ำ']];
+  const ws = XLSX.utils.aoa_to_sheet(sum); ws['!cols'] = [{ wch: 30 }, { wch: 60 }];
+  [7, 8, 9, 10, 11].forEach(r => { const c = ws[XLSX.utils.encode_cell({ r, c: 1 })]; if (c && typeof c.v === 'number') c.z = '0.0%'; });
+  XLSX.utils.book_append_sheet(wb, ws, 'สรุป');
+  const days = [...groupBy(X.daily, r => r.regist_date).entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  addSheet(wb, 'รายวัน', ['วันที่', 'เคส', 'ออกบัตร', 'พยบ', 'PE', 'Dx', 'เฉลี่ยรวม'], days.map(([d, rs]) => { const a = aggr(rs); return [d, a.n, a.card, a.nurse, a.pe, a.dx, a.all]; }), [12, 8, 10, 8, 8, 8, 12], [2, 3, 4, 5, 6]);
+  addSheet(wb, 'รายคลินิก', ['คลินิก', 'เคส', 'ออกบัตร', 'พยบ', 'PE', 'Dx', 'เฉลี่ยรวม'], X.clinics.map(c => [c.name, c.n, c.card, c.nurse, c.pe, c.dx, c.all]), [30, 8, 10, 8, 8, 8, 12], [2, 3, 4, 5, 6]);
+  addSheet(wb, 'รายแพทย์', ['เลข ว.', 'แพทย์', 'เคส', 'PE', 'Dx', 'เฉลี่ยรวม', 'สถานะ'], [...X.docs].sort((a, b) => (a.all ?? 9) - (b.all ?? 9)).map(d => [d.code, d.name, d.n, d.pe, d.dx, d.all, d.all !== null && d.all < thr ? 'ต่ำกว่าเกณฑ์' : 'ผ่านเกณฑ์']), [10, 28, 8, 8, 8, 12, 14], [3, 4, 5]);
+  addSheet(wb, 'เจ้าหน้าที่', ['ประเภท', 'เจ้าหน้าที่', 'visit', 'คะแนน'], X.staff.map(r => [r.grp === 'card' ? 'ออกบัตร' : 'พยาบาล', r.staff, Number(r.n_visits), num(r.avg_score)]), [12, 28, 8, 10], [3]);
+  addSheet(wb, 'ช่องที่ขาด', ['กลุ่ม', 'ช่อง', 'จำนวนเคส', 'ทั้งหมด', '% ของเคส'], X.miss.map(r => [r.grp, r.field, Number(r.n), Number(r.total), Number(r.total) ? Number(r.n) / Number(r.total) : null]).sort((a, b) => b[2] - a[2]), [10, 34, 10, 10, 10], [4]);
+  addSheet(wb, 'รายชั่วโมง', ['ชั่วโมง', 'เคส', 'ออกบัตร', 'พยบ', 'PE', 'Dx', 'เฉลี่ยรวม'], X.hour.filter(h => h.hr !== null).map(h => [String(h.hr).padStart(2, '0') + ':00', Number(h.n), num(h.avg_card), num(h.avg_nurse), num(h.avg_pe), num(h.avg_dx), num(h.avg_all)]), [10, 8, 10, 8, 8, 8, 12], [2, 3, 4, 5, 6]);
+  saveWb(wb, `OPD_Quality_Exec_${X.s}_to_${X.e}.xlsx`);
+}
+
+// ===================== USERS (แอดมิน) =====================
+async function loadUsers() {
+  $('u-body').innerHTML = '<tr><td colspan="6" class="py-6 text-center"><span class="spinner"></span>กำลังโหลด...</td></tr>';
+  const { data, error } = await sb.rpc('admin_list_users');
+  if (error) { $('u-body').innerHTML = `<tr><td colspan="6" class="py-6 text-center text-rose-600">${esc(error.message)}</td></tr>`; return; }
+  const stCls = { pending: 'bg-amber-100 text-amber-700', active: 'bg-emerald-100 text-emerald-700', rejected: 'bg-slate-100 text-slate-600', disabled: 'bg-rose-100 text-rose-700' };
+  const stTxt = { pending: 'รออนุมัติ', active: 'ใช้งานได้', rejected: 'ปฏิเสธ', disabled: 'ระงับ' };
+  $('u-body').innerHTML = data.map(u => `<tr class="border-t border-slate-100">
+    <td class="py-2 px-3 text-left text-sm">${esc(u.email)}</td><td class="py-2 px-3 text-left text-sm">${esc(u.display_name)}</td><td class="py-2 px-3 text-left text-sm">${esc(u.doc_code || '')}</td>
+    <td class="py-2 px-3 text-left"><select id="ur-${u.id}" class="sel">${['doctor', 'exec', 'admin'].map(r => `<option value="${r}"${r === u.role ? ' selected' : ''}>${{ doctor: 'แพทย์', exec: 'ผู้บริหาร', admin: 'ผู้ดูแลระบบ' }[r]}</option>`).join('')}</select></td>
+    <td class="py-2 px-3 text-left">${tag(stTxt[u.status] || u.status, stCls[u.status] || '')}</td>
+    <td class="py-2 px-3 text-left whitespace-nowrap">
+      ${u.status !== 'active' ? `<button class="btns" onclick="setUser('${u.id}','active')">✅ อนุมัติ</button>` : `<button class="btns" onclick="setUser('${u.id}','active')">บันทึกบทบาท</button> <button class="btns" onclick="setUser('${u.id}','disabled')">ระงับ</button>`}
+      ${u.status === 'pending' ? `<button class="btns" onclick="setUser('${u.id}','rejected')">ปฏิเสธ</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="py-6 text-center text-slate-400">ไม่มีผู้ใช้</td></tr>';
+}
+async function setUser(id, status) {
+  const { error } = await sb.rpc('admin_set_user', { p_user: id, p_status: status, p_role: $('ur-' + id).value });
+  if (error) alert(error.message);
+  loadUsers();
+}
+
+show('loading');
+</script>
+</body>
+</html>
