@@ -242,7 +242,53 @@
         </div>
       </div>
     </div>
-
+<!-- ===== ปฏิทินข้อมูล (ผู้บริหาร/แอดมิน) ===== -->
+<div id="pane-cal" class="hidden space-y-4">
+  <div class="card p-3 sm:p-4">
+    <div class="flex flex-wrap items-end gap-2">
+      <button class="btns" onclick="calShift(-1)">◀</button>
+      <div><label class="lbl">เดือน</label><select id="cal-month" class="sel" onchange="calGo()"></select></div>
+      <div><label class="lbl">ปี (พ.ศ.)</label><select id="cal-year" class="sel" onchange="calGo()"></select></div>
+      <button class="btns" onclick="calShift(1)">▶</button>
+      <button class="btns" onclick="calToday()">วันนี้</button>
+      <div><label class="lbl">ถือว่า "ต่ำกว่าปกติ" เมื่อ</label>
+        <select id="cal-pct" class="sel" onchange="renderCal()">
+          <option value="30">&lt; 30% ของค่ากลาง</option><option value="50" selected>&lt; 50% ของค่ากลาง</option><option value="70">&lt; 70% ของค่ากลาง</option>
+        </select></div>
+      <label class="flex items-center gap-1.5 text-sm text-slate-600 pb-2"><input type="checkbox" id="cal-we" onchange="renderCal()"> นับ ส.–อา. เป็นวันทำการ</label>
+      <div class="flex flex-wrap gap-2 sm:ml-auto">
+        <button class="btns" onclick="loadCal()">🔄 รีเฟรช</button>
+        <button class="btns" onclick="copyMissing()">📋 คัดลอกวันที่ขาด</button>
+        <button class="btns" onclick="exportCal()">📊 Excel</button>
+      </div>
+    </div>
+  </div>
+  <div id="cal-msg" class="hidden py-8 text-center text-sm text-slate-500"></div>
+  <div id="cal-body" class="hidden space-y-4">
+    <div id="cal-kpis" class="grid grid-cols-2 lg:grid-cols-6 gap-3"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div class="card p-3 sm:p-4 lg:col-span-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h3 id="cal-title" class="text-base font-semibold text-slate-800"></h3>
+          <div id="cal-legend" class="flex flex-wrap gap-1.5"></div>
+        </div>
+        <div class="grid grid-cols-7 gap-1 sm:gap-1.5 text-center text-[11px] text-slate-500 mb-1">
+          <div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div>
+        </div>
+        <div id="cal-grid" class="grid grid-cols-7 gap-1 sm:gap-1.5"></div>
+      </div>
+      <div id="cal-detail" class="card p-3 sm:p-4 lg:col-span-2"><p class="text-sm text-slate-400">คลิกวันที่ในปฏิทินเพื่อดูรายละเอียด</p></div>
+    </div>
+    <div class="card p-4"><h3 class="text-sm font-semibold text-slate-700">จำนวนแถวต่อวัน</h3><div id="cal-chart"></div></div>
+    <div class="card overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-100"><h3 class="text-sm font-semibold text-slate-700">🔎 วันที่ควรตรวจสอบ (ขาด / ต่ำกว่าปกติ / ต่างจากตารางเดิม)</h3></div>
+      <div class="overflow-x-auto"><table class="min-w-full"><thead><tr>
+        <th class="thc text-left">วันที่</th><th class="thc text-left">สถานะ</th><th class="thc">แถว</th><th class="thc">เกณฑ์ขั้นต่ำ</th>
+        <th class="thc">ตารางเดิม</th><th class="thc">ส่วนต่าง</th><th class="thc text-left">Backfill / หมายเหตุ</th></tr></thead>
+        <tbody id="cal-flag-body"></tbody></table></div>
+    </div>
+  </div>
+</div>
     <!-- ===== ผู้ใช้งาน (แอดมิน) ===== -->
     <div id="pane-users" class="hidden">
       <div class="card overflow-hidden">
@@ -472,7 +518,8 @@ async function startApp() {
   $('who-role').textContent = { doctor: 'แพทย์', exec: 'ผู้บริหาร', admin: 'ผู้ดูแลระบบ' }[ME.role];
   const isDoc = ME.role === 'doctor';
   const tabs = isDoc ? [['cases', '📋 รายงานของฉัน'], ['guide', '📖 คู่มือ']] : [['exec', '📈 ภาพรวมผู้บริหาร'], ['cases', '🔎 รายเคส'], ['guide', '📖 คู่มือ']];
-  if (ME.role === 'admin') tabs.splice(2, 0, ['users', '👥 ผู้ใช้งาน']);
+  if (!isDoc) tabs.splice(2, 0, ['cal', '📅 ปฏิทินข้อมูล']);
+  if (ME.role === 'admin') tabs.splice(3, 0, ['users', '👥 ผู้ใช้งาน']);
   $('nav').innerHTML = tabs.map(([k, t]) => `<button id="nt-${k}" onclick="goTab('${k}')" class="tabb">${t}</button>`).join('');
   $('c-doc-wrap').classList.toggle('hidden', isDoc); $('c-th-doc').classList.toggle('hidden', isDoc);
   $('c-note').classList.toggle('hidden', !isDoc);
@@ -511,10 +558,10 @@ function applyPreset(p, k) {
 function preset(p, k) { applyPreset(p, k); p === 'x' ? loadExec() : loadCases(); }
 
 function goTab(k) {
-  ['exec', 'cases', 'users', 'guide'].forEach(t => { const el = $('pane-' + t); if (el) el.classList.toggle('hidden', t !== k); const b = $('nt-' + t); if (b) b.className = 'tabb' + (t === k ? ' tabb-on' : ''); });
+  ['exec', 'cases', 'cal', 'users', 'guide'].forEach(t => { const el = $('pane-' + t); if (el) el.classList.toggle('hidden', t !== k); const b = $('nt-' + t); if (b) b.className = 'tabb' + (t === k ? ' tabb-on' : ''); });
   if (!loaded[k]) {
     loaded[k] = true;
-    if (k === 'exec') loadExec(); else if (k === 'cases') loadCases(); else if (k === 'users') loadUsers();
+    if (k === 'exec') loadExec(); else if (k === 'cases') loadCases(); else if (k === 'cal') loadCal(); else if (k === 'users') loadUsers();
   }
   setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
 }
@@ -747,7 +794,230 @@ async function setUser(id, status) {
   if (error) alert(error.message);
   loadUsers();
 }
+// ===================== ปฏิทินข้อมูล (exec/admin) =====================
+const TH_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const TH_DOW = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const CAL_ST = {
+  ok:      ['ข้อมูลครบ',            'bg-emerald-50 border-emerald-200 text-emerald-800'],
+  low:     ['ต่ำกว่าปกติ',           'bg-amber-50 border-amber-300 text-amber-800'],
+  missing: ['ไม่มีข้อมูล',           'bg-rose-50 border-rose-300 text-rose-800'],
+  holiday: ['วันหยุด/ไม่มีบริการ',   'bg-sky-50 border-sky-200 text-sky-800'],
+  empty:   ['ดึงแล้วแต่ว่าง',        'bg-slate-100 border-slate-200 text-slate-600'],
+  weekend: ['ส.–อา. (ว่าง)',         'bg-slate-50 border-slate-100 text-slate-400'],
+  pending: ['รอข้อมูล',              'bg-indigo-50 border-indigo-200 text-indigo-700'],
+  future:  ['ยังไม่ถึง',             'bg-white border-slate-100 text-slate-300']
+};
+const CAL_COLOR = { ok: '#10b981', low: '#f59e0b', missing: '#f43f5e', holiday: '#38bdf8', empty: '#94a3b8', weekend: '#cbd5e1', pending: '#a5b4fc', future: '#e2e8f0' };
+let CAL = { y: null, m: null, rows: [], by: new Map(), base: { wd: 0, we: 0 }, sel: null, view: [] };
 
+const todayISO = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);   // วันที่ตามเวลาไทย
+const calDow = iso => new Date(iso + 'T00:00:00Z').getUTCDay();
+const isoOf = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+const median = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
+const calMism = r => r.summary_total > 0 && r.n_rows > 0 && Math.abs(r.n_rows - r.summary_total) / r.summary_total > 0.1;
+const fmtDT = v => v ? new Date(v).toLocaleString('th-TH') : '–';
+
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); alert('คัดลอกแล้ว'); }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); alert('คัดลอกแล้ว'); } catch (_) { prompt('คัดลอกข้อความนี้:', t); }
+    document.body.removeChild(ta);
+  }
+}
+const copyAttr = s => `copyText(decodeURIComponent('${encodeURIComponent(s).replace(/'/g, '%27')}'))`;
+
+function buildCalControls() {
+  $('cal-month').innerHTML = TH_MONTHS.map((t, i) => `<option value="${i}">${t}</option>`).join('');
+  const y0 = Number(todayISO().slice(0, 4));
+  $('cal-year').innerHTML = [y0 - 2, y0 - 1, y0, y0 + 1].map(y => `<option value="${y}">${y + 543}</option>`).join('');
+}
+const calSync = () => { $('cal-month').value = CAL.m; $('cal-year').value = CAL.y; };
+function calGo() { CAL.m = Number($('cal-month').value); CAL.y = Number($('cal-year').value); CAL.sel = null; loadCal(); }
+function calShift(n) { let m = CAL.m + n, y = CAL.y; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } CAL.m = m; CAL.y = y; CAL.sel = null; calSync(); loadCal(); }
+function calToday() { const t = todayISO(); CAL.y = Number(t.slice(0, 4)); CAL.m = Number(t.slice(5, 7)) - 1; CAL.sel = null; calSync(); loadCal(); }
+
+async function loadCal() {
+  if (!['exec', 'admin'].includes(ME.role)) return;
+  if (CAL.y === null) { buildCalControls(); const t = todayISO(); CAL.y = Number(t.slice(0, 4)); CAL.m = Number(t.slice(5, 7)) - 1; calSync(); }
+  const first = isoOf(CAL.y, CAL.m, 1);
+  const last = new Date(Date.UTC(CAL.y, CAL.m + 1, 0)).toISOString().slice(0, 10);
+  $('cal-msg').innerHTML = '<span class="spinner"></span>กำลังโหลด...'; $('cal-msg').classList.remove('hidden'); $('cal-body').classList.add('hidden');
+  const { data, error } = await sb.rpc('opd_coverage', { p_start: addDays(first, -60), p_end: last });   // ย้อนหลัง 60 วันเพื่อใช้หาค่ากลาง
+  if (error) { $('cal-msg').innerHTML = `❌ ${esc(error.message)}<br><span class="text-xs">ถ้าขึ้นว่าไม่พบฟังก์ชัน ให้รัน SQL ของปฏิทินข้อมูลใน Supabase ก่อน</span>`; return; }
+  CAL.rows = data.map(r => ({ ...r, day: String(r.day).slice(0, 10), n_rows: Number(r.n_rows), n_visits: Number(r.n_visits), n_doctors: Number(r.n_doctors), n_clinics: Number(r.n_clinics),
+    avg_all: r.avg_all === null ? null : Number(r.avg_all), summary_total: r.summary_total === null ? null : Number(r.summary_total) }));
+  CAL.by = new Map(CAL.rows.map(r => [r.day, r]));
+  const wd = [], we = [];
+  CAL.rows.forEach(r => { if (r.n_rows > 0 && r.note_kind !== 'holiday') { const d = calDow(r.day); (d === 0 || d === 6 ? we : wd).push(r.n_rows); } });
+  CAL.base = { wd: median(wd), we: median(we) };
+  $('cal-msg').classList.add('hidden'); $('cal-body').classList.remove('hidden');
+  renderCal();
+  if (CAL.sel) selectCalDay(CAL.sel);
+}
+
+function calStatus(r) {
+  const iso = r.day, today = todayISO();
+  if (r.note_kind === 'holiday') return 'holiday';
+  if (iso > today) return 'future';
+  const dw = calDow(iso), isWe = dw === 0 || dw === 6;
+  const pct = Number($('cal-pct').value) / 100, countWe = $('cal-we').checked;
+  if (r.n_rows > 0) {
+    const base = isWe ? CAL.base.we : CAL.base.wd;
+    return base > 0 && r.n_rows < base * pct ? 'low' : 'ok';
+  }
+  if (iso === today || r.bf_status === 'running') return 'pending';
+  const hr = new Date(Date.now() + 7 * 3600000).getUTCHours();
+  if (iso === addDays(today, -1) && hr < 6) return 'pending';             // ข้อมูลเมื่อวานเข้าราว 04:30
+  if (r.summary_total > 0) return 'missing';                               // ตารางเดิมมีข้อมูลวันนั้น แต่รายละเอียดไม่มี
+  if (r.bf_status === 'done') return 'empty';                              // ดึงแล้วแต่ไม่มีแถว (น่าจะไม่มีผู้ป่วย)
+  if (isWe && !countWe) return 'weekend';
+  return 'missing';
+}
+
+function renderCal() {
+  if (!CAL.rows.length) return;
+  const y = CAL.y, m = CAL.m, pct = Number($('cal-pct').value) / 100;
+  const nDays = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(), firstDow = new Date(Date.UTC(y, m, 1)).getUTCDay();
+  $('cal-title').textContent = `${TH_MONTHS[m]} ${y + 543}`;
+  const cnt = {}; Object.keys(CAL_ST).forEach(k => { cnt[k] = 0; });
+  let sumRows = 0, bfDone = 0, bfRun = 0;
+  const cells = Array(firstDow).fill('<div></div>');
+  CAL.view = [];
+  for (let d = 1; d <= nDays; d++) {
+    const iso = isoOf(y, m, d);
+    const r = CAL.by.get(iso) || { day: iso, n_rows: 0, n_visits: 0, n_doctors: 0, n_clinics: 0 };
+    const st = calStatus(r), mism = calMism(r);
+    cnt[st]++; sumRows += r.n_rows;
+    if (r.bf_status === 'done') bfDone++;
+    if (r.bf_status === 'running') bfRun++;
+    CAL.view.push({ iso, r, st, mism });
+    const badges = (mism ? '⚠️' : '') + (r.bf_status === 'running' ? '⏳' : '') + (r.note ? '📝' : '');
+    const tip = `${tDate(iso)} · ${CAL_ST[st][0]} · ${r.n_rows.toLocaleString()} แถว${r.note ? ' · ' + r.note : ''}`;
+    cells.push(`<button onclick="selectCalDay('${iso}')" title="${esc(tip)}" class="rounded-lg border p-1.5 sm:p-2 text-left min-h-[62px] sm:min-h-[76px] transition hover:shadow ${CAL_ST[st][1]} ${CAL.sel === iso ? 'ring-2 ring-blue-500' : ''}">
+      <div class="flex items-start justify-between"><span class="text-[11px] font-semibold">${d}</span><span class="text-[10px]">${badges}</span></div>
+      <div class="mt-1 text-sm sm:text-base font-semibold tabular-nums">${r.n_rows > 0 ? r.n_rows.toLocaleString() : (st === 'missing' ? '✕' : '–')}</div>
+      <div class="text-[10px] opacity-70 truncate">${r.n_rows > 0 ? r.n_doctors + ' แพทย์' : CAL_ST[st][0]}</div></button>`);
+  }
+  $('cal-grid').innerHTML = cells.join('');
+  $('cal-legend').innerHTML = Object.entries(CAL_ST).filter(([k]) => k !== 'future')
+    .map(([k, v]) => `<span class="px-1.5 py-0.5 rounded border text-[10px] ${v[1]}">${v[0]}</span>`).join('');
+
+  const latest = [...CAL.rows].reverse().find(r => r.n_rows > 0);
+  const ls = CAL.rows.map(r => r.last_sync).filter(Boolean).sort().pop();
+  const hrsAgo = ls ? (Date.now() - Date.parse(ls)) / 3600000 : null;
+  $('cal-kpis').innerHTML = [
+    kpi('ข้อมูลครบ', cnt.ok, 'วัน', 'text-emerald-600'),
+    kpi('ต่ำกว่าปกติ', cnt.low, 'วัน', cnt.low ? 'text-amber-600' : 'text-slate-800'),
+    kpi('ไม่มีข้อมูล', cnt.missing, 'วัน (ไม่รวมวันหยุด/ส.–อา.)', cnt.missing ? 'text-rose-600' : 'text-slate-800'),
+    kpi('รวมแถวเดือนนี้', sumRows.toLocaleString(), `Backfill เสร็จ ${bfDone} · กำลังทำ ${bfRun}`),
+    kpi('ข้อมูลล่าสุด', latest ? tDate(latest.day) : '–', 'วันที่มีข้อมูลล่าสุด'),
+    kpi('ซิงค์ล่าสุด', hrsAgo === null ? '–' : `${hrsAgo < 1 ? '<1' : Math.round(hrsAgo)} ชม.`, ls ? fmtDT(ls) : '', hrsAgo !== null && hrsAgo > 36 ? 'text-rose-600' : 'text-slate-800')
+  ].join('');
+
+  draw('cal-chart', {
+    chart: baseChart('bar', 260), series: [{ name: 'จำนวนแถว', data: CAL.view.map(v => v.r.n_rows) }],
+    plotOptions: { bar: { distributed: true, borderRadius: 3, columnWidth: '70%' } },
+    colors: CAL.view.map(v => CAL_COLOR[v.st]), legend: { show: false }, dataLabels: { enabled: false },
+    xaxis: { categories: CAL.view.map(v => v.iso.slice(8)), labels: { ...AX, rotate: 0 }, axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { min: 0, labels: { ...AX, formatter: v => Math.round(v).toLocaleString() } },
+    grid: { borderColor: '#f1f5f9', strokeDashArray: 4, xaxis: { lines: { show: false } } },
+    annotations: { yaxis: CAL.base.wd > 0 ? [{ y: Math.round(CAL.base.wd * pct), borderColor: '#f59e0b', strokeDashArray: 4, label: { text: 'เกณฑ์ต่ำ (วันธรรมดา)', style: { fontSize: '10px' } } }] : [] },
+    tooltip: { x: { formatter: (v, o) => tDate(CAL.view[o.dataPointIndex].iso) }, y: { formatter: v => `${Number(v).toLocaleString()} แถว` } }
+  });
+
+  const flagged = CAL.view.filter(v => v.st === 'missing' || v.st === 'low' || v.mism);
+  $('cal-flag-body').innerHTML = flagged.map(v => {
+    const r = v.r, isWe = [0, 6].includes(calDow(v.iso)), base = Math.round((isWe ? CAL.base.we : CAL.base.wd) * pct);
+    const diff = r.summary_total != null ? r.n_rows - r.summary_total : null;
+    const bf = r.bf_status ? `Backfill: ${r.bf_status}${r.bf_rows != null ? ' (' + r.bf_rows + ' แถว)' : ''}` : '';
+    return `<tr class="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onclick="selectCalDay('${v.iso}')">
+      <td class="tdc text-left font-medium">${tDate(v.iso)}</td><td class="tdc text-left">${tag(CAL_ST[v.st][0], CAL_ST[v.st][1])}${v.mism ? ' ' + tag('⚠️ ต่างตารางเดิม', 'bg-amber-100 text-amber-700') : ''}</td>
+      <td class="tdc">${r.n_rows.toLocaleString()}</td><td class="tdc">${base ? base.toLocaleString() : '–'}</td>
+      <td class="tdc">${r.summary_total != null ? r.summary_total.toLocaleString() : '–'}</td>
+      <td class="tdc ${diff ? 'text-rose-600' : ''}">${diff != null ? (diff > 0 ? '+' : '') + diff.toLocaleString() : '–'}</td>
+      <td class="tdc text-left whitespace-normal text-xs">${esc([bf, r.note].filter(Boolean).join(' · '))}</td></tr>`;
+  }).join('') || '<tr><td colspan="7" class="py-6 text-center text-emerald-600">🎉 ไม่พบวันที่ต้องตรวจสอบในเดือนนี้</td></tr>';
+}
+
+async function selectCalDay(iso) {
+  CAL.sel = iso; renderCal();
+  const v = CAL.view.find(x => x.iso === iso); if (!v) return;
+  const r = v.r, st = v.st, isAdmin = ME.role === 'admin';
+  const diff = r.summary_total != null ? r.n_rows - r.summary_total : null;
+  const mins = r.bf_started && r.bf_finished ? Math.round((Date.parse(r.bf_finished) - Date.parse(r.bf_started)) / 60000) : null;
+  const stat = (l, val) => `<div class="rounded-lg bg-slate-50 p-2"><p class="text-[11px] text-slate-500">${l}</p><p class="text-sm font-semibold text-slate-800 tabular-nums">${val}</p></div>`;
+  const sqlCheck = `select count(*) as rows, count(distinct hn || '|' || visit) as visits, max(synced_at) as last_sync\nfrom public.opd_visit_detail where regist_date = date '${iso}';`;
+  const sqlRedo = `-- ให้ workflow backfill ดึงวัน ${iso} ใหม่ (รันใน Supabase SQL Editor; วันต้องอยู่ในช่วง RANGE_START–RANGE_END ของ Pick day)\ndelete from public.opd_visit_detail where regist_date = date '${iso}';\ndelete from public.opd_backfill_log where day = date '${iso}';`;
+  $('cal-detail').innerHTML = `
+    <div class="flex items-center justify-between gap-2 mb-2"><h3 class="text-sm font-semibold text-slate-800">${fullDateTH(iso)}</h3>${tag(CAL_ST[st][0], CAL_ST[st][1])}</div>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      ${stat('แถว (visit × แพทย์)', r.n_rows.toLocaleString())}${stat('จำนวน visit', r.n_visits.toLocaleString())}
+      ${stat('แพทย์', r.n_doctors)}${stat('คลินิก', r.n_clinics)}
+      ${stat('คะแนนเฉลี่ย', P(r.avg_all))}${stat('ซิงค์ล่าสุด', fmtDT(r.last_sync))}
+      ${stat('ตารางเดิม (opd_summary)', r.summary_total != null ? r.summary_total.toLocaleString() : '–')}
+      ${stat('ส่วนต่าง', diff != null ? (diff > 0 ? '+' : '') + diff.toLocaleString() : '–')}
+      ${stat('Backfill', r.bf_status ? r.bf_status + (r.bf_rows != null ? ` · ${r.bf_rows} แถว` : '') : '–')}${stat('ใช้เวลา', mins != null ? mins + ' นาที' : '–')}
+    </div>
+    <div id="cal-clin" class="mb-3 text-xs text-slate-400">${r.n_rows > 0 ? 'กำลังโหลดรายคลินิก...' : ''}</div>
+    <div class="space-y-2 border-t border-slate-100 pt-3">
+      <p class="text-[11px] font-medium text-slate-500">เครื่องมือ</p>
+      <div class="flex flex-wrap gap-2">
+        <button class="btns" onclick="${copyAttr(sqlCheck)}">📋 คัดลอก SQL ตรวจจำนวนแถว</button>
+        <button class="btns" onclick="${copyAttr(sqlRedo)}">📋 คัดลอก SQL ให้ดึงวันนี้ใหม่</button>
+      </div>
+      ${r.note ? `<p class="text-xs text-slate-600">${r.note_kind === 'holiday' ? '🏖️ วันหยุด' : '📝 หมายเหตุ'}: ${esc(r.note)}</p>` : ''}
+      ${isAdmin ? `<div class="flex flex-wrap items-center gap-2">
+        <select id="cal-note-kind" class="sel"><option value="holiday"${r.note_kind === 'holiday' ? ' selected' : ''}>วันหยุด/ไม่มีบริการ</option><option value="note"${r.note_kind === 'note' ? ' selected' : ''}>หมายเหตุ</option></select>
+        <input id="cal-note-text" class="sel flex-1 min-w-[140px]" placeholder="ข้อความ (ไม่บังคับ)" value="${esc(r.note || '')}">
+        <button class="btns" onclick="saveCalNote('${iso}')">💾 บันทึก</button>
+        ${r.note_kind ? `<button class="btns" onclick="clearCalNote('${iso}')">🗑️ ล้าง</button>` : ''}</div>` : ''}
+    </div>`;
+  if (r.n_rows > 0) {
+    const { data, error } = await sb.rpc('opd_coverage_day', { p_day: iso });
+    const el = $('cal-clin'); if (!el || CAL.sel !== iso) return;
+    if (error || !data) { el.textContent = error ? error.message : ''; return; }
+    el.className = 'mb-3 max-h-[200px] overflow-y-auto';
+    el.innerHTML = `<table class="min-w-full text-xs"><thead><tr><th class="py-1 px-2 text-left text-slate-500 font-medium">คลินิก</th><th class="py-1 px-2 text-right text-slate-500 font-medium">แถว</th><th class="py-1 px-2 text-right text-slate-500 font-medium">แพทย์</th><th class="py-1 px-2 text-right text-slate-500 font-medium">เฉลี่ย</th></tr></thead><tbody>`
+      + data.map(c => `<tr class="border-t border-slate-100"><td class="py-1 px-2">${esc(c.clinic)}</td><td class="py-1 px-2 text-right tabular-nums">${Number(c.n_rows).toLocaleString()}</td><td class="py-1 px-2 text-right tabular-nums">${c.n_doctors}</td><td class="py-1 px-2 text-right">${chip(c.avg_all === null ? null : Number(c.avg_all))}</td></tr>`).join('')
+      + '</tbody></table>';
+  }
+}
+const fullDateTH = iso => `${['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'][calDow(iso)]} ${tDate(iso)}`;
+
+async function saveCalNote(iso) {
+  const { error } = await sb.rpc('cal_set_note', { p_day: iso, p_kind: $('cal-note-kind').value, p_note: $('cal-note-text').value });
+  if (error) return alert(error.message);
+  loadCal();
+}
+async function clearCalNote(iso) {
+  const { error } = await sb.rpc('cal_clear_note', { p_day: iso });
+  if (error) return alert(error.message);
+  loadCal();
+}
+
+function copyMissing() {
+  const lines = CAL.view.filter(v => v.st === 'missing' || v.st === 'low')
+    .map(v => `${tDate(v.iso)} — ${CAL_ST[v.st][0]} (${v.r.n_rows.toLocaleString()} แถว)`);
+  if (!lines.length) return alert('เดือนนี้ไม่พบวันที่ขาดหรือต่ำกว่าปกติ');
+  copyText(`วันที่ที่ควรตรวจสอบ ${TH_MONTHS[CAL.m]} ${CAL.y + 543}\n` + lines.join('\n'));
+}
+
+function exportCal() {
+  if (!CAL.view.length) return alert('ยังไม่มีข้อมูล');
+  const rows = CAL.view.map(({ iso, r, st }) => [
+    iso, TH_DOW[calDow(iso)], CAL_ST[st][0], r.n_rows, r.n_visits, r.n_doctors, r.n_clinics, r.avg_all,
+    r.last_sync ? fmtDT(r.last_sync) : '', r.summary_total, r.summary_total != null ? r.n_rows - r.summary_total : null,
+    r.bf_status || '', r.bf_started ? fmtDT(r.bf_started) : '', r.bf_finished ? fmtDT(r.bf_finished) : '',
+    r.bf_started && r.bf_finished ? Math.round((Date.parse(r.bf_finished) - Date.parse(r.bf_started)) / 60000) : null, r.note || ''
+  ]);
+  const wb = XLSX.utils.book_new();
+  addSheet(wb, 'ปฏิทินข้อมูล',
+    ['วันที่', 'วัน', 'สถานะ', 'แถว', 'visit', 'แพทย์', 'คลินิก', 'คะแนนเฉลี่ย', 'ซิงค์ล่าสุด', 'ตารางเดิม', 'ส่วนต่าง', 'Backfill', 'เริ่ม', 'เสร็จ', 'นาที', 'หมายเหตุ'],
+    rows, [12, 6, 20, 10, 10, 10, 10, 12, 22, 12, 10, 12, 22, 22, 8, 30], [7]);
+  saveWb(wb, `OPD_DataCalendar_${CAL.y}-${String(CAL.m + 1).padStart(2, '0')}.xlsx`);
+}
+ 
 show('loading');
 </script>
 </body>
