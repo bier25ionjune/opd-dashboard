@@ -2,11 +2,23 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>ระบบรายงานผลการลงข้อมูลแพทย์</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <title>BRH - ระบบรายงานผลการลงข้อมูลแพทย์</title>
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#1e3a8a">
+  <meta name="description" content="ระบบรายงานผลการลงข้อมูลแพทย์และคุณภาพเวชระเบียน โรงพยาบาลบุรีรัมย์ (BRH)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BRH OPD">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -14,21 +26,82 @@
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.1"></script>
   <style>
     * { font-family: 'Kanit', sans-serif; }
-    html { -webkit-text-size-adjust: 100%; }
-    body { background: linear-gradient(135deg, #eef2f7 0%, #e0e8f5 100%); min-height: 100vh; }
-    .header-gradient { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #60a5fa 100%); }
-    .card-hover { transition: transform .2s ease, box-shadow .2s ease; }
-    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,.08); }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      background-color: #f4f7fb;
+      background-image: radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
+                        radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.06) 0px, transparent 50%);
+      min-height: 100vh;
+    }
+    /* Argon Dashboard Hero Header */
+    .argon-hero {
+      background: linear-gradient(135deg, #0a192f 0%, #1e3a8a 45%, #2563eb 80%, #0284c7 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .argon-hero::before {
+      content: '';
+      position: absolute;
+      top: -120px; right: -100px;
+      width: 380px; height: 380px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56,189,248,0.22) 0%, rgba(56,189,248,0) 70%);
+      pointer-events: none;
+    }
+    .argon-hero::after {
+      content: '';
+      position: absolute;
+      bottom: -140px; left: -80px;
+      width: 340px; height: 340px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(96,165,250,0.18) 0%, rgba(96,165,250,0) 70%);
+      pointer-events: none;
+    }
+    /* Argon Soft Shadow Cards */
+    .argon-card {
+      background: #ffffff;
+      border-radius: 1.25rem;
+      box-shadow: 0 20px 27px 0 rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .card-hover {
+      transition: transform .25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow .25s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 30px -10px rgba(30, 58, 138, 0.12);
+    }
     table thead th { position: sticky; top: 0; z-index: 10; }
     tbody tr { transition: background-color .15s ease; }
     ::-webkit-scrollbar { height: 8px; width: 8px; }
     ::-webkit-scrollbar-thumb { background: #93c5fd; border-radius: 4px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
-    .btn-primary { background: linear-gradient(135deg, #2563eb, #3b82f6); transition: all .2s ease; }
-    .btn-primary:hover { background: linear-gradient(135deg, #1d4ed8, #2563eb); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(37,99,235,.35); }
-    .vt { padding: .55rem 1.1rem; border-radius: .65rem; font-size: .95rem; color: #64748b; font-weight: 500; transition: all .2s ease; }
-    .vt:hover { color: #1d4ed8; }
-    .vt-active { background: #fff; color: #1d4ed8; font-weight: 600; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+    .btn-primary {
+      background: linear-gradient(310deg, #1e40af 0%, #2563eb 50%, #0284c7 100%);
+      box-shadow: 0 4px 10px -1px rgba(37, 99, 235, 0.35), 0 2px 6px -1px rgba(37, 99, 235, 0.2);
+      transition: all .2s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px -2px rgba(37, 99, 235, 0.45);
+      filter: brightness(1.05);
+    }
+    .btn-primary:active { transform: translateY(0); }
+    .vt {
+      padding: .6rem 1.25rem;
+      border-radius: .75rem;
+      font-size: .95rem;
+      color: #64748b;
+      font-weight: 500;
+      transition: all .2s ease;
+    }
+    .vt:hover { color: #1e40af; }
+    .vt-active {
+      background: #ffffff;
+      color: #1e3a8a;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
     .spinner { border: 3px solid #dbeafe; border-top: 3px solid #2563eb; border-radius: 50%; width: 20px; height: 20px; animation: spin .8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .fade-in { animation: fadeIn .3s ease; }
@@ -36,12 +109,25 @@
     input, select, textarea, button { font-size: 16px; }
     details > summary { list-style: none; }
     details > summary::-webkit-details-marker { display: none; }
-    .apexcharts-tooltip { font-family: 'Kanit', sans-serif !important; border-radius: 10px !important; box-shadow: 0 8px 24px rgba(15,23,42,.12) !important; border: 1px solid #e2e8f0 !important; }
+    .apexcharts-tooltip { font-family: 'Kanit', sans-serif !important; border-radius: 12px !important; box-shadow: 0 12px 28px rgba(15,23,42,.14) !important; border: 1px solid #e2e8f0 !important; }
+
+    /* Argon Input Styling */
+    .argon-input {
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.75rem;
+      transition: all 0.2s ease;
+    }
+    .argon-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+      outline: none;
+    }
 
     @media (max-width: 767px) {
       table.responsive-table thead { display: none; }
       table.responsive-table, table.responsive-table tbody, table.responsive-table tr, table.responsive-table td { display: block; width: 100%; }
-      table.responsive-table tr { margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.04); background: #fff !important; }
+      table.responsive-table tr { margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(15,23,42,.04); background: #fff !important; }
       table.responsive-table td { text-align: right !important; padding: 10px 14px !important; border-bottom: 1px solid #f1f5f9 !important; position: relative; padding-left: 45% !important; min-height: 20px; }
       table.responsive-table td:last-child { border-bottom: none !important; }
       table.responsive-table td::before { content: attr(data-label); position: absolute; left: 14px; top: 10px; font-weight: 600; color: #64748b; text-align: left; font-size: .8rem; }
@@ -52,104 +138,181 @@
     }
   </style>
 </head>
-<body class="pb-12">
+<body class="pb-24 sm:pb-14 text-slate-800">
 
-  <!-- Header -->
-  <div class="header-gradient shadow-lg">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-center">
-      <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center justify-center gap-2 sm:gap-3 leading-snug">
-        <span class="text-2xl sm:text-3xl">🏥</span><span>ระบบรายงานผลการลงข้อมูลแพทย์</span>
-      </h1>
-      <p class="text-blue-100 text-xs sm:text-sm mt-2">ติดตามและตรวจสอบสถานะการลงข้อมูลผู้ป่วยรายแพทย์</p>
-    </div>
-  </div>
+  <!-- Argon Hero Header -->
+  <header class="argon-hero shadow-xl pb-16 sm:pb-20 pt-4 sm:pt-6">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <!-- Top Navbar -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-5 mb-5 border-b border-white/15">
+        <a href="index.html" class="flex items-center gap-3 group">
+          <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/10 backdrop-blur-md p-1 border border-white/25 shadow-lg flex items-center justify-center group-hover:scale-105 transition">
+            <img src="icons/icon-192.png" alt="BRH Logo" class="w-full h-full object-contain rounded-xl">
+          </div>
+          <div class="text-left">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 text-[11px] font-extrabold tracking-wider uppercase rounded-md bg-sky-400/20 text-sky-200 border border-sky-300/30">BRH</span>
+              <span class="text-xs sm:text-sm font-medium text-blue-100">โรงพยาบาลบุรีรัมย์</span>
+            </div>
+            <p class="text-white font-bold text-sm sm:text-base tracking-wide">OPD Medical Analytics</p>
+          </div>
+        </a>
 
-  <div class="max-w-6xl mx-auto p-3 sm:p-4 md:p-6 -mt-4 sm:-mt-6">
-    <div class="bg-white rounded-2xl shadow-xl p-3 sm:p-4 md:p-8">
-
-      <!-- สลับมุมมอง -->
-      <div class="inline-flex p-1 bg-slate-100 rounded-xl w-full sm:w-auto mb-4">
-        <button id="vt-my" onclick="switchView('my')" class="vt vt-active flex-1 sm:flex-none">👤 รายงานของฉัน</button>
-        <button id="vt-exec" onclick="switchView('exec')" class="vt flex-1 sm:flex-none">📈 ภาพรวมผู้บริหาร</button>
+        <!-- Page Switcher & PWA Install Button -->
+        <div class="flex items-center gap-2">
+          <button id="pwa-install-btn" onclick="installPWA()" class="hidden items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-400/20 hover:bg-sky-400/30 text-white border border-sky-300/40 text-xs sm:text-sm font-semibold backdrop-blur-md transition shadow-sm">
+            <span>📲</span><span>ติดตั้งแอป</span>
+          </button>
+          <div class="hidden sm:inline-flex p-1 rounded-xl bg-slate-900/35 backdrop-blur-md border border-white/15">
+            <a href="index.html" class="px-3.5 py-1.5 rounded-lg bg-white text-blue-900 font-bold text-xs sm:text-sm shadow-sm flex items-center gap-1.5">
+              <span>🏥</span><span>รายงานลงข้อมูลแพทย์</span>
+            </a>
+            <a href="quality.html" class="px-3.5 py-1.5 rounded-lg text-blue-100 hover:text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5">
+              <span>🧾</span><span>คุณภาพเวชระเบียน</span>
+            </a>
+          </div>
+        </div>
       </div>
 
-      <div class="mb-4 sm:mb-5 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs sm:text-sm text-indigo-900 flex items-start gap-2">
-        <span class="leading-none">ℹ️</span>
+      <!-- Hero Title -->
+      <div class="text-center sm:text-left flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-sky-200 border border-white/15 mb-2.5 backdrop-blur-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Argon Medical Dashboard • PWA
+          </span>
+          <h1 class="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-snug">
+            ระบบรายงานผลการลงข้อมูลแพทย์
+          </h1>
+          <p class="text-blue-100/90 text-xs sm:text-sm mt-1">
+            ติดตามและตรวจสอบสถานะการลงข้อมูลผู้ป่วยนอก (OPD) รายแพทย์แบบเรียลไทม์
+          </p>
+        </div>
+
+        <!-- Quick Link Button to Quality Page (Visible on all screens) -->
+        <a href="quality.html" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 text-xs sm:text-sm font-semibold backdrop-blur-md transition shadow-lg self-center sm:self-end">
+          <span>🧾</span>
+          <span>หน้าคุณภาพเวชระเบียน (รายเคส)</span>
+          <span class="text-sky-200">→</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container Overlapping Argon Hero -->
+  <div class="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 -mt-12 sm:-mt-14 relative z-10">
+    <div class="argon-card p-3.5 sm:p-5 md:p-8">
+
+      <!-- สลับมุมมอง & ลิงก์แยกหน้า -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div class="inline-flex p-1.5 bg-slate-100/90 border border-slate-200/70 rounded-xl w-full sm:w-auto">
+          <button id="vt-my" onclick="switchView('my')" class="vt vt-active flex-1 sm:flex-none">👤 รายงานของฉัน</button>
+          <button id="vt-exec" onclick="switchView('exec')" class="vt flex-1 sm:flex-none">📈 ภาพรวมผู้บริหาร</button>
+        </div>
+        <a href="quality.html" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200/80 text-indigo-800 text-xs sm:text-sm font-semibold hover:from-indigo-100 hover:to-blue-100 transition shadow-sm w-full sm:w-auto justify-center">
+          <span>🧾</span>
+          <span>เปิดหน้ารายงานคุณภาพเวชระเบียน</span>
+          <span class="px-1.5 py-0.5 text-[10px] rounded bg-indigo-600 text-white font-bold">Login</span>
+        </a>
+      </div>
+
+      <!-- Data Status Banner -->
+      <div class="mb-5 bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-sky-50/90 border border-blue-200/70 rounded-xl p-3.5 text-xs sm:text-sm text-slate-700 flex items-start gap-2.5 shadow-sm">
+        <span class="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-sm">ℹ️</span>
         <div id="data-availability-report-content" class="leading-relaxed">กำลังตรวจสอบข้อมูลในระบบ...</div>
       </div>
 
       <!-- ===================== มุมมอง: รายงานของฉัน ===================== -->
       <div id="view-my">
-        <a href="quality.html" class="inline-flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-sm font-medium hover:bg-indigo-100">
-  🧾 รายงานคุณภาพการบันทึกเวชระเบียน (รายเคส) <span class="text-[11px] text-indigo-400">ต้องเข้าสู่ระบบ</span>
-</a>
-        <p class="text-sm text-slate-500 mb-3">พิมพ์ <b>เลข ว.</b> หรือ <b>ชื่อของท่าน</b> เพื่อดูผลการลงข้อมูลและวันที่ยังค้างอยู่ (ระบบจะจำค่าที่ค้นล่าสุดไว้ในเครื่องนี้)</p>
+        <p class="text-xs sm:text-sm text-slate-500 mb-3">พิมพ์ <b>เลข ว.</b> หรือ <b>ชื่อของท่าน</b> เพื่อดูผลการลงข้อมูลและวันที่ยังค้างอยู่ (ระบบจะจำค่าที่ค้นล่าสุดไว้ในเครื่องนี้)</p>
 
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-2 bg-gradient-to-br from-slate-50 to-blue-50 p-3 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
+        <!-- Argon Filter Box -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-3 bg-slate-50/80 p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-inner">
           <div>
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
-            <input type="date" id="my-start" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">📅 วันที่เริ่มต้น</label>
+            <input type="date" id="my-start" class="argon-input w-full p-2 sm:p-2.5 text-slate-700">
           </div>
           <div>
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
-            <input type="date" id="my-end" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">📅 ถึงวันที่</label>
+            <input type="date" id="my-end" class="argon-input w-full p-2 sm:p-2.5 text-slate-700">
           </div>
           <div class="col-span-2 md:col-span-1">
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🩺 เลข ว. หรือ ชื่อแพทย์</label>
-            <input type="text" id="my-doc" placeholder="เช่น 27447 หรือ สมชาย" onkeydown="if(event.key==='Enter')fetchMy()" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">🩺 เลข ว. หรือ ชื่อแพทย์</label>
+            <input type="text" id="my-doc" placeholder="เช่น 27447 หรือ สมชาย" onkeydown="if(event.key==='Enter')fetchMy()" class="argon-input w-full p-2 sm:p-2.5 text-slate-700">
           </div>
           <div class="col-span-2 md:col-span-1">
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 คลินิก (ไม่บังคับ)</label>
-            <select id="my-clinic" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 outline-none transition">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">🏥 คลินิก (ไม่บังคับ)</label>
+            <select id="my-clinic" class="argon-input w-full p-2 sm:p-2.5 text-slate-700">
               <option value="">-- ทุกคลินิก --</option>
             </select>
           </div>
           <div class="col-span-2 md:col-span-1 flex items-end">
-            <button onclick="fetchMy()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-lg shadow text-sm sm:text-base">🔍 ค้นหาข้อมูล</button>
+            <button onclick="fetchMy()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-xl text-sm sm:text-base flex items-center justify-center gap-1.5">
+              <span>🔍</span><span>ค้นหาข้อมูล</span>
+            </button>
           </div>
         </div>
-        <div id="my-presets" class="flex flex-wrap items-center gap-1.5 mb-5"></div>
+        <div id="my-presets" class="flex flex-wrap items-center gap-1.5 mb-6"></div>
 
-        <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-5 sm:mb-6 text-center">
-          <div class="card-hover bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 sm:p-5 rounded-xl border border-blue-200 shadow-sm">
-            <p class="text-[10px] sm:text-sm text-blue-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>📋</span><span>เคสตรวจทั้งหมด</span></p>
-            <h3 class="text-lg sm:text-3xl font-bold text-blue-800 mt-1" id="sum-total">0</h3>
+        <!-- Argon KPI Stat Cards -->
+        <div class="grid grid-cols-3 gap-2.5 sm:gap-5 mb-6">
+          <!-- Total Cases -->
+          <div class="card-hover bg-white p-3 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center sm:justify-between text-center sm:text-left gap-2">
+            <div>
+              <p class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">เคสตรวจทั้งหมด</p>
+              <h3 class="text-lg sm:text-3xl font-extrabold text-slate-800 mt-0.5 tabular-nums" id="sum-total">0</h3>
+            </div>
+            <div class="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-sky-400 text-white flex items-center justify-center text-base sm:text-xl shadow-md shadow-blue-500/25 shrink-0 order-first sm:order-last">
+              📋
+            </div>
           </div>
-          <div class="card-hover bg-gradient-to-br from-green-50 to-green-100 p-2.5 sm:p-5 rounded-xl border border-green-200 shadow-sm">
-            <p class="text-[10px] sm:text-sm text-green-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>✅</span><span>ลงข้อมูลแล้ว</span></p>
-            <h3 class="text-lg sm:text-3xl font-bold text-green-800 mt-1" id="sum-completed">0</h3>
+          <!-- Completed Cases -->
+          <div class="card-hover bg-white p-3 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center sm:justify-between text-center sm:text-left gap-2">
+            <div>
+              <p class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">ลงข้อมูลแล้ว</p>
+              <h3 class="text-lg sm:text-3xl font-extrabold text-emerald-600 mt-0.5 tabular-nums" id="sum-completed">0</h3>
+            </div>
+            <div class="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-400 text-white flex items-center justify-center text-base sm:text-xl shadow-md shadow-emerald-500/25 shrink-0 order-first sm:order-last">
+              ✅
+            </div>
           </div>
-          <div class="card-hover bg-gradient-to-br from-purple-50 to-purple-100 p-2.5 sm:p-5 rounded-xl border border-purple-200 shadow-sm">
-            <p class="text-[10px] sm:text-sm text-purple-600 font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 leading-tight"><span>📈</span><span>อัตราความสำเร็จ</span></p>
-            <h3 class="text-lg sm:text-3xl font-bold text-purple-800 mt-1" id="sum-percent">0.0%</h3>
+          <!-- Success Rate -->
+          <div class="card-hover bg-white p-3 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center sm:justify-between text-center sm:text-left gap-2">
+            <div>
+              <p class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">อัตราความสำเร็จ</p>
+              <h3 class="text-lg sm:text-3xl font-extrabold text-indigo-600 mt-0.5 tabular-nums" id="sum-percent">0.0%</h3>
+            </div>
+            <div class="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-500 text-white flex items-center justify-center text-base sm:text-xl shadow-md shadow-indigo-500/25 shrink-0 order-first sm:order-last">
+              📈
+            </div>
           </div>
         </div>
 
         <div id="my-detail" class="hidden mb-6 fade-in"></div>
 
         <div id="export-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 mb-3">
-          <p class="text-xs sm:text-sm text-gray-500">พบข้อมูลทั้งหมด <span id="result-count" class="font-bold text-gray-700">0</span> รายการ</p>
+          <p class="text-xs sm:text-sm text-slate-500">พบข้อมูลทั้งหมด <span id="result-count" class="font-bold text-slate-800">0</span> รายการ</p>
           <div class="flex gap-2 w-full sm:w-auto">
-            <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📊 Excel (ละเอียด)</button>
-            <button onclick="exportCSV()" class="flex-1 sm:flex-none bg-slate-600 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📑 CSV</button>
-            <button onclick="exportPDF()" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-lg shadow transition">📄 PDF</button>
+            <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-xl shadow-sm transition">📊 Excel (ละเอียด)</button>
+            <button onclick="exportCSV()" class="flex-1 sm:flex-none bg-slate-600 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-xl shadow-sm transition">📑 CSV</button>
+            <button onclick="exportPDF()" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-semibold py-2 px-3 sm:px-4 rounded-xl shadow-sm transition">📄 PDF</button>
           </div>
         </div>
 
-        <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm max-h-[500px] overflow-y-auto">
+        <div class="overflow-x-auto rounded-2xl border border-slate-200/90 shadow-sm max-h-[500px] overflow-y-auto">
           <table class="min-w-full bg-white responsive-table">
-            <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white text-xs sm:text-sm">
+            <thead class="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-800 text-white text-xs sm:text-sm">
               <tr>
-                <th class="py-3 px-4 border-b border-slate-600 text-left">คลินิก</th>
-                <th class="py-3 px-4 border-b border-slate-600">เลข ว.</th>
-                <th class="py-3 px-4 border-b border-slate-600 text-left">ชื่อแพทย์</th>
-                <th class="py-3 px-4 border-b border-slate-600 text-right">รวม (เคส)</th>
-                <th class="py-3 px-4 border-b border-slate-600 text-right">เสร็จ (เคส)</th>
-                <th class="py-3 px-4 border-b border-slate-600 text-right">% ความสำเร็จ</th>
+                <th class="py-3.5 px-4 border-b border-slate-700 text-left font-semibold">คลินิก</th>
+                <th class="py-3.5 px-4 border-b border-slate-700 font-semibold">เลข ว.</th>
+                <th class="py-3.5 px-4 border-b border-slate-700 text-left font-semibold">ชื่อแพทย์</th>
+                <th class="py-3.5 px-4 border-b border-slate-700 text-right font-semibold">รวม (เคส)</th>
+                <th class="py-3.5 px-4 border-b border-slate-700 text-right font-semibold">เสร็จ (เคส)</th>
+                <th class="py-3.5 px-4 border-b border-slate-700 text-right font-semibold">% ความสำเร็จ</th>
               </tr>
             </thead>
-            <tbody id="report-table-body" class="text-center text-xs sm:text-sm divide-y divide-gray-100">
-              <tr><td colspan="6" class="py-8 text-gray-400">👆 พิมพ์เลข ว. หรือชื่อของท่าน แล้วกดค้นหา</td></tr>
+            <tbody id="report-table-body" class="text-center text-xs sm:text-sm divide-y divide-slate-100">
+              <tr><td colspan="6" class="py-10 text-slate-400">👆 พิมพ์เลข ว. หรือชื่อของท่าน แล้วกดค้นหา</td></tr>
             </tbody>
           </table>
         </div>
@@ -157,26 +320,25 @@
 
       <!-- ===================== มุมมอง: ภาพรวมผู้บริหาร ===================== -->
       <div id="view-exec" class="hidden">
-        <a href="quality.html" class="inline-flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-sm font-medium hover:bg-indigo-100">
-  🧾 รายงานคุณภาพการบันทึกเวชระเบียน (รายเคส) <span class="text-[11px] text-indigo-400">ต้องเข้าสู่ระบบ</span>
-</a>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-2 bg-gradient-to-br from-slate-50 to-blue-50 p-3 sm:p-5 rounded-xl border border-blue-100 shadow-sm">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-3 bg-slate-50/80 p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-inner">
           <div>
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 วันที่เริ่มต้น</label>
-            <input type="date" id="ex-start" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">📅 วันที่เริ่มต้น</label>
+            <input type="date" id="ex-start" class="argon-input w-full p-2 sm:p-2.5 text-slate-700">
           </div>
           <div>
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">📅 ถึงวันที่</label>
-            <input type="date" id="ex-end" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none transition">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">📅 ถึงวันที่</label>
+            <input type="date" id="ex-end" class="argon-input w-full p-2 sm:p-2.5 text-slate-700">
           </div>
           <div class="col-span-2 md:col-span-1">
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">🏥 คลินิก</label>
-            <select id="ex-clinic" class="w-full p-2 sm:p-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-400 outline-none transition">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">🏥 คลินิก</label>
+            <select id="ex-clinic" class="argon-input w-full p-2 sm:p-2.5 text-slate-700">
               <option value="">-- ทุกคลินิก --</option>
             </select>
           </div>
           <div class="col-span-2 md:col-span-1 flex items-end">
-            <button onclick="fetchExec()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-lg shadow text-sm sm:text-base">📈 แสดงภาพรวม</button>
+            <button onclick="fetchExec()" class="btn-primary w-full text-white font-bold py-2.5 px-4 rounded-xl text-sm sm:text-base flex items-center justify-center gap-1.5">
+              <span>📈</span><span>แสดงภาพรวม</span>
+            </button>
           </div>
         </div>
         <div id="ex-presets" class="flex flex-wrap items-center gap-1.5 mb-5"></div>
@@ -186,10 +348,22 @@
       </div>
     </div>
 
-    <div class="text-center text-[11px] sm:text-xs text-gray-400 mt-5 pb-2">
-      <p>พัฒนาโดย <span class="font-semibold text-gray-500">ณฐพล มูลศาสตร์</span> — นักวิชาการคอมพิวเตอร์ กลุ่มงานสุขภาพดิจิทัล</p>
+    <div class="text-center text-[11px] sm:text-xs text-slate-400 mt-6 pb-2">
+      <p>พัฒนาโดย <span class="font-semibold text-slate-600">ณฐพล มูลศาสตร์</span> — นักวิชาการคอมพิวเตอร์ กลุ่มงานสุขภาพดิจิทัล โรงพยาบาลบุรีรัมย์ (BRH)</p>
     </div>
   </div>
+
+  <!-- Mobile Bottom Navigation Bar (PWA App Style - Separate Pages) -->
+  <nav class="sm:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(15,23,42,0.08)] px-3 py-1.5 flex items-center justify-around">
+    <a href="index.html" class="flex flex-col items-center justify-center py-1 px-4 rounded-xl text-blue-700 font-bold text-xs bg-blue-50/80">
+      <span class="text-lg leading-none mb-0.5">🏥</span>
+      <span>รายงานแพทย์</span>
+    </a>
+    <a href="quality.html" class="flex flex-col items-center justify-center py-1 px-4 rounded-xl text-slate-500 hover:text-blue-700 font-medium text-xs transition">
+      <span class="text-lg leading-none mb-0.5">🧾</span>
+      <span>คุณภาพเวชระเบียน</span>
+    </a>
+  </nav>
 
   <script>
     // ===================== CONFIG =====================
@@ -1396,6 +1570,38 @@
       } finally {
         document.body.removeChild(printArea);
       }
+    }
+
+    // ===================== PWA SERVICE WORKER & INSTALL =====================
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const btn = document.getElementById('pwa-install-btn');
+      if (btn) {
+        btn.classList.remove('hidden');
+        btn.classList.add('inline-flex');
+      }
+    });
+
+    async function installPWA() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      const btn = document.getElementById('pwa-install-btn');
+      if (btn) {
+        btn.classList.add('hidden');
+        btn.classList.remove('inline-flex');
+      }
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          console.warn('SW registration failed:', err);
+        });
+      });
     }
   </script>
 </body>
