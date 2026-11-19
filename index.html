@@ -169,8 +169,8 @@
 
         <!-- Desktop Navigation & Install PWA -->
         <div class="flex items-center gap-2">
-          <button id="pwa-install-btn" onclick="installPWA()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white border border-white/30 text-xs sm:text-sm font-medium backdrop-blur-sm transition">
-            <span>📲</span><span>ติดตั้งแอป</span>
+          <button id="pwa-install-btn" onclick="installPWA()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-900 font-semibold text-xs sm:text-sm shadow-sm transition">
+            <span>📲</span><span>ติดตั้งแอป PWA</span>
           </button>
           <div class="hidden sm:inline-flex p-1 rounded-xl bg-blue-950/30 backdrop-blur-sm border border-white/15">
             <a href="index.html" class="px-3.5 py-1.5 rounded-lg bg-white text-blue-900 font-semibold text-xs sm:text-sm shadow-sm flex items-center gap-1.5">
@@ -1584,6 +1584,17 @@
 
     // ===================== PWA SERVICE WORKER & INSTALL =====================
     let deferredInstallPrompt = null;
+
+    function checkStandalone() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      const btn = document.getElementById('pwa-install-btn');
+      if (isStandalone && btn) {
+        btn.classList.add('hidden');
+        btn.classList.remove('inline-flex');
+      }
+    }
+    window.addEventListener('DOMContentLoaded', checkStandalone);
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
@@ -1594,15 +1605,68 @@
       }
     });
 
-    async function installPWA() {
-      if (!deferredInstallPrompt) return;
-      deferredInstallPrompt.prompt();
-      const { outcome } = await deferredInstallPrompt.userChoice;
+    window.addEventListener('appinstalled', () => {
       deferredInstallPrompt = null;
       const btn = document.getElementById('pwa-install-btn');
       if (btn) {
         btn.classList.add('hidden');
         btn.classList.remove('inline-flex');
+      }
+    });
+
+    function showInstallGuideModal() {
+      let modal = document.getElementById('pwa-guide-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'pwa-guide-modal';
+        modal.className = 'fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 fade-in';
+        modal.innerHTML = `
+          <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2.5">
+                <img src="icons/icon-192.png" class="w-9 h-9 rounded-xl shadow-sm" alt="BRH">
+                <div>
+                  <h3 class="font-bold text-slate-800 text-base">ติดตั้งแอป BRH OPD</h3>
+                  <p class="text-xs text-slate-500">ใช้งานสะดวกเต็มจอเหมือนแอปมือถือ</p>
+                </div>
+              </div>
+              <button onclick="document.getElementById('pwa-guide-modal').remove()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold">✕</button>
+            </div>
+            <div class="space-y-3 text-xs sm:text-sm text-slate-600">
+              <div class="p-3 rounded-xl bg-blue-50/70 border border-blue-100">
+                <p class="font-semibold text-blue-900 mb-1">🍎 สำหรับ iPhone / iPad (Safari)</p>
+                <p>แตะปุ่ม <b>แชร์ (Share)</b> <span class="px-1.5 py-0.5 bg-white rounded border text-xs">⬆️</span> ด้านล่างจอ แล้วเลือก <b>"เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)</b></p>
+              </div>
+              <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                <p class="font-semibold text-emerald-900 mb-1">🤖 สำหรับ Android (Chrome)</p>
+                <p>แตะเมนู <b>จุด 3 จุด (⋮)</b> มุมขวาบน แล้วเลือก <b>"ติดตั้งแอป" (Install app)</b> หรือ <b>"เพิ่มลงในหน้าจอหลัก"</b></p>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <p class="font-semibold text-slate-800 mb-1">💻 สำหรับคอมพิวเตอร์ (Chrome / Edge)</p>
+                <p>คลิกไอคอน <b>ติดตั้ง (รูปหน้าจอมีลูกศรลง)</b> ที่ด้านขวาของช่อง URL ด้านบนเบราว์เซอร์</p>
+              </div>
+            </div>
+            <button onclick="document.getElementById('pwa-guide-modal').remove()" class="btn-primary w-full text-white font-semibold py-2.5 rounded-xl mt-4 text-sm">เข้าใจแล้ว</button>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+    }
+
+    async function installPWA() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          deferredInstallPrompt = null;
+          const btn = document.getElementById('pwa-install-btn');
+          if (btn) {
+            btn.classList.add('hidden');
+            btn.classList.remove('inline-flex');
+          }
+        }
+      } else {
+        showInstallGuideModal();
       }
     }
 
