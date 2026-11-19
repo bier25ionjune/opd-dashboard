@@ -1,7 +1,7 @@
 // BRH OPD Dashboard - Service Worker (PWA)
 // Optimized for zero impact on Supabase API queries
 
-const CACHE_NAME = 'brh-opd-v1.0.0';
+const CACHE_NAME = 'brh-opd-v1.1.0';
 
 const STATIC_ASSETS = [
   './',
